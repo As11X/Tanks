@@ -629,7 +629,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6e4cc0827b572b5408b2cd8eb8b456b4, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Tanks.Complete.TankMovement
+  m_EditorClassIdentifier: Assembly-CSharp::TankMovement
   m_PlayerNumber: 1
   m_Speed: 12
   m_TurnSpeed: 180
@@ -651,7 +651,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 184d72ea2424d1443bca885930fe844a, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Tanks.Complete.TankShooting
+  m_EditorClassIdentifier: Assembly-CSharp::TankShooting
   m_Shell: {fileID: 5409530, guid: 008ecb1b70bec724fa2cd34255b0d8f8, type: 3}
   m_FireTransform: {fileID: 4535585583303792957}
   m_AimSlider: {fileID: 239745827673686446}
@@ -677,7 +677,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 030896d0325fa3e4d8d7d4cfe2351cb2, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Tanks.Complete.TankHealth
+  m_EditorClassIdentifier: Assembly-CSharp::TankHealth
   m_StartingHealth: 100
   m_Slider: {fileID: 1812595181032194511}
   m_FillImage: {fileID: 7137924967094173891}

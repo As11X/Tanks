@@ -505,7 +505,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6e4cc0827b572b5408b2cd8eb8b456b4, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Tanks.Complete.TankMovement
+  m_EditorClassIdentifier: Assembly-CSharp::TankMovement
   m_PlayerNumber: 1
   m_Speed: 12
   m_TurnSpeed: 180

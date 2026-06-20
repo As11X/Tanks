@@ -1,0 +1,2386 @@
+diff --git a/Assets/_Tanks/Scripts/Camera/CameraControl.cs b/Assets/_Tanks/Scripts/Camera/CameraControl.cs
+index 49242e0..f484eed 100644
+--- a/Assets/_Tanks/Scripts/Camera/CameraControl.cs
++++ b/Assets/_Tanks/Scripts/Camera/CameraControl.cs
+@@ -4,55 +4,46 @@ namespace Tanks.Complete
+ {
+     public class CameraControl : MonoBehaviour
+     {
+-        public float m_DampTime = 0.2f;                 // Approximate time for the camera to refocus.
+-        public float m_ScreenEdgeBuffer = 4f;           // Space between the top/bottom most target and the screen edge.
+-        public float m_MinSize = 6.5f;                  // The smallest orthographic size the camera can be.
+-        public Transform[] m_Targets;                   // All the targets the camera needs to encompass.
++        public float m_DampTime = 0.2f;
++        public float m_ScreenEdgeBuffer = 4f;
++        public float m_MinSize = 6.5f;
++        public Transform[] m_Targets;
+ 
+ 
+-        private Camera m_Camera;                        // Used for referencing the camera.
+-        private float m_ZoomSpeed;                      // Reference speed for the smooth damping of the orthographic size.
+-        private Vector3 m_MoveVelocity;                 // Reference velocity for the smooth damping of the position.
+-        private Vector3 m_DesiredPosition;              // The position the camera is moving towards.
++        private Camera m_Camera;
++        private float m_ZoomSpeed;
++        private Vector3 m_MoveVelocity;
++        private Vector3 m_DesiredPosition;
+ 
+-        private Vector3 m_AimToRig;                     // The offset to apply to the position so the child camera aim at the desired point 
++        private Vector3 m_AimToRig;
+ 
+         private void Awake ()
+         {
+             m_Camera = GetComponentInChildren<Camera> ();
+             
+-            // plane in which the camera rig is in
+             Plane p = new Plane(Vector3.up, transform.position);
+             Ray r = new Ray(m_Camera.transform.position, m_Camera.transform.forward);
+             p.Raycast(r, out float d );
+ 
+-            // This is where the camera aim on the rig plane
+             var aimTArget = r.GetPoint(d);
+ 
+-            // User can set the camera in random position and rotation as a child of this object, so it won't aim at the
+-            // center of this, meaning placing this object at the desired position won't make the camera aim at that desired position.
+-            // This offset correct that so the camera actually aim at the desired position
+             m_AimToRig = transform.position - aimTArget;
+         }
+ 
+ 
+         private void FixedUpdate ()
+         {
+-            // Move the camera towards a desired position.
+             Move ();
+ 
+-            // Change the size of the camera based.
+             Zoom ();
+         }
+ 
+ 
+         private void Move ()
+         {
+-            // Find the average position of the targets.
+             FindAveragePosition ();
+ 
+             
+-            // Smoothly transition to that position.
+             transform.position = Vector3.SmoothDamp(transform.position, m_DesiredPosition + m_AimToRig, ref m_MoveVelocity, m_DampTime);
+         }
+ 
+@@ -62,23 +53,18 @@ namespace Tanks.Complete
+             Vector3 averagePos = new Vector3 ();
+             int numTargets = 0;
+ 
+-            // Go through all the targets and add their positions together.
+             for (int i = 0; i < m_Targets.Length; i++)
+             {
+-                // If the target isn't active, go on to the next one.
+                 if (!m_Targets[i].gameObject.activeSelf)
+                     continue;
+ 
+-                // Add to the average and increment the number of targets in the average.
+                 averagePos += m_Targets[i].position;
+                 numTargets++;
+             }
+ 
+-            // If there are targets divide the sum of the positions by the number of them to find the average.
+             if (numTargets > 0)
+                 averagePos /= numTargets;
+ 
+-            // Keep the same y value.
+             averagePos.y = transform.position.y;
+             
+             m_DesiredPosition = averagePos;
+@@ -87,7 +73,6 @@ namespace Tanks.Complete
+ 
+         private void Zoom ()
+         {
+-            // Find the required size based on the desired position and smoothly transition to that size.
+             float requiredSize = FindRequiredSize();
+             m_Camera.orthographicSize = Mathf.SmoothDamp (m_Camera.orthographicSize, requiredSize, ref m_ZoomSpeed, m_DampTime);
+         }
+@@ -95,36 +80,26 @@ namespace Tanks.Complete
+ 
+         private float FindRequiredSize ()
+         {
+-            // Find the position the camera rig is moving towards in its local space.
+             Vector3 desiredLocalPos = m_Camera.transform.InverseTransformPoint(m_DesiredPosition);
+ 
+-            // Start the camera's size calculation at zero.
+             float size = 0f;
+ 
+-            // Go through all the targets...
+             for (int i = 0; i < m_Targets.Length; i++)
+             {
+-                // ... and if they aren't active continue on to the next target.
+                 if (!m_Targets[i].gameObject.activeSelf)
+                     continue;
+ 
+-                // Otherwise, find the position of the target in the camera's local space.
+                 Vector3 targetLocalPos = m_Camera.transform.InverseTransformPoint(m_Targets[i].position);
+ 
+-                // Find the position of the target from the desired position of the camera's local space.
+                 Vector3 desiredPosToTarget = targetLocalPos - desiredLocalPos;
+ 
+-                // Choose the largest out of the current size and the distance of the tank 'up' or 'down' from the camera.
+                 size = Mathf.Max(size, Mathf.Abs(desiredPosToTarget.y));
+ 
+-                // Choose the largest out of the current size and the calculated size based on the tank being to the left or right of the camera.
+                 size = Mathf.Max(size, Mathf.Abs(desiredPosToTarget.x) / m_Camera.aspect);
+             }
+ 
+-            // Add the edge buffer to the size.
+             size += m_ScreenEdgeBuffer;
+ 
+-            // Make sure the camera's size isn't below the minimum.
+             size = Mathf.Max (size, m_MinSize);
+ 
+             return size;
+@@ -133,13 +108,10 @@ namespace Tanks.Complete
+ 
+         public void SetStartPositionAndSize ()
+         {
+-            // Find the desired position.
+             FindAveragePosition ();
+ 
+-            // Set the camera's position to the desired position without damping.
+             transform.position = m_DesiredPosition;
+ 
+-            // Find and set the required size of the camera.
+             m_Camera.orthographicSize = FindRequiredSize ();
+         }
+     }
+diff --git a/Assets/_Tanks/Scripts/Editor/MoveSceneViewCamera.cs b/Assets/_Tanks/Scripts/Editor/MoveSceneViewCamera.cs
+deleted file mode 100644
+index 0428258..0000000
+--- a/Assets/_Tanks/Scripts/Editor/MoveSceneViewCamera.cs
++++ /dev/null
+@@ -1,18 +0,0 @@
+-﻿using UnityEditor;
+-using UnityEngine;
+-
+-namespace Tanks.Complete
+-{
+-    public class MoveSceneViewCamera
+-    {
+-        [MenuItem ("Window/Position Scene View Camera")]
+-        static void PositionCamera ()
+-        {
+-            SceneView.lastActiveSceneView.pivot = new Vector3(-147f, 23.5f, 237f);
+-            SceneView.lastActiveSceneView.rotation = Quaternion.Euler (0f, 150f, 0f);
+-            SceneView.lastActiveSceneView.orthographic = true;
+-            SceneView.lastActiveSceneView.size = 100f;
+-            Selection.activeGameObject = Camera.main.gameObject;
+-        }
+-    }
+-}
+\ No newline at end of file
+diff --git a/Assets/_Tanks/Scripts/Editor/MoveSceneViewCamera.cs.meta b/Assets/_Tanks/Scripts/Editor/MoveSceneViewCamera.cs.meta
+deleted file mode 100644
+index afff45a..0000000
+--- a/Assets/_Tanks/Scripts/Editor/MoveSceneViewCamera.cs.meta
++++ /dev/null
+@@ -1,19 +0,0 @@
+-fileFormatVersion: 2
+-guid: 1ac54707d3a75084eb41ad5c4c3a43b5
+-timeCreated: 1431528686
+-licenseType: Store
+-MonoImporter:
+-  serializedVersion: 2
+-  defaultReferences: []
+-  executionOrder: 0
+-  icon: {instanceID: 0}
+-  userData: 
+-  assetBundleName: 
+-  assetBundleVariant: 
+-AssetOrigin:
+-  serializedVersion: 1
+-  productId: 46209
+-  packageName: Tanks! | Complete Project
+-  packageVersion: 3.0
+-  assetPath: Assets/_Tanks/Scripts/Editor/MoveSceneViewCamera.cs
+-  uploadId: 847542
+diff --git a/Assets/_Tanks/Scripts/Editor/PowerUpEditor.cs b/Assets/_Tanks/Scripts/Editor/PowerUpEditor.cs
+index 44f5f1c..915859a 100644
+--- a/Assets/_Tanks/Scripts/Editor/PowerUpEditor.cs
++++ b/Assets/_Tanks/Scripts/Editor/PowerUpEditor.cs
+@@ -16,7 +16,6 @@ namespace Tanks.Complete
+ 
+         private void OnEnable()
+         {
+-            // gets references of the fields
+             powerUpType = serializedObject.FindProperty("m_PowerUpType");
+             durationTime = serializedObject.FindProperty("m_DurationTime");
+             collectFX = serializedObject.FindProperty("m_CollectFX");
+@@ -32,11 +31,9 @@ namespace Tanks.Complete
+         {
+             serializedObject.Update();
+ 
+-            // Shows the power up type and duration time
+             EditorGUILayout.PropertyField(powerUpType);
+             EditorGUILayout.PropertyField(collectFX);
+ 
+-            // Shows  the fields of the selected type
+             PowerUp.PowerUpType selectedType = (PowerUp.PowerUpType)powerUpType.enumValueIndex;
+ 
+             switch (selectedType)
+diff --git a/Assets/_Tanks/Scripts/Managers/GameManager.cs b/Assets/_Tanks/Scripts/Managers/GameManager.cs
+index 6b8afa2..3619f36 100644
+--- a/Assets/_Tanks/Scripts/Managers/GameManager.cs
++++ b/Assets/_Tanks/Scripts/Managers/GameManager.cs
+@@ -8,14 +8,12 @@ namespace Tanks.Complete
+ {
+     public class GameManager : MonoBehaviour
+     {
+-        // Which state the game is currently in
+         public enum GameState
+         {
+             MainMenu,
+             Game
+         }
+ 
+-        // Data about the selected tanks passed from the menu to the GameManager
+         public class PlayerData
+         {
+             public bool IsComputer;
+@@ -24,41 +22,38 @@ namespace Tanks.Complete
+             public int ControlIndex;
+         }
+         
+-        public int m_NumRoundsToWin = 5;            // The number of rounds a single player has to win to win the game.
+-        public float m_StartDelay = 3f;             // The delay between the start of RoundStarting and RoundPlaying phases.
+-        public float m_EndDelay = 3f;               // The delay between the end of RoundPlaying and RoundEnding phases.
+-        public CameraControl m_CameraControl;       // Reference to the CameraControl script for control during different phases.
++        public int m_NumRoundsToWin = 5;
++        public float m_StartDelay = 3f;
++        public float m_EndDelay = 3f;
++        public CameraControl m_CameraControl;
+ 
+         [Header("Tanks Prefabs")]
+-        public GameObject m_Tank1Prefab;            // The Prefab used by the tank in Slot 1 of the Menu
+-        public GameObject m_Tank2Prefab;            // The Prefab used by the tank in Slot 2 of the Menu
+-        public GameObject m_Tank3Prefab;            // The Prefab used by the tank in Slot 3 of the Menu
+-        public GameObject m_Tank4Prefab;            // The Prefab used by the tank in Slot 4 of the Menu
++        public GameObject m_Tank1Prefab;
++        public GameObject m_Tank2Prefab;
++        public GameObject m_Tank3Prefab;
++        public GameObject m_Tank4Prefab;
+         
+         [FormerlySerializedAs("m_Tanks")] 
+-        public TankManager[] m_SpawnPoints;         // A collection of managers for enabling and disabling different aspects of the tanks.
++        public TankManager[] m_SpawnPoints;
+         
+         private GameState m_CurrentState;
+         
+-        private int m_RoundNumber;                  // Which round the game is currently on.
+-        private WaitForSeconds m_StartWait;         // Used to have a delay whilst the round starts.
+-        private WaitForSeconds m_EndWait;           // Used to have a delay whilst the round or game ends.
+-        private TankManager m_RoundWinner;          // Reference to the winner of the current round.  Used to make an announcement of who won.
+-        private TankManager m_GameWinner;           // Reference to the winner of the game.  Used to make an announcement of who won.
++        private int m_RoundNumber;
++        private WaitForSeconds m_StartWait;
++        private WaitForSeconds m_EndWait;
++        private TankManager m_RoundWinner;
++        private TankManager m_GameWinner;
+ 
+-        private PlayerData[] m_TankData;            // Data passed from the menu about each selected tank (at least 2, max 4)
+-        private int m_PlayerCount = 0;              // The number of players (2 to 4), decided from the number of PlayerData passed by the menu
+-        private TextMeshProUGUI m_TitleText;        // The text used to display game message. Automatically found as part of the Menu prefab
++        private PlayerData[] m_TankData;
++        private int m_PlayerCount = 0;
++        private TextMeshProUGUI m_TitleText;
+ 
+         private void Start()
+         {
+             m_CurrentState = GameState.MainMenu;
+ 
+-            // Find the text used to display game info. Need to look at inactive object too, as the Menu prefab (which contains it) may be
+-            // disabled at the start when the user have a Title Screen which will enable the Menu.
+             var textRef = FindAnyObjectByType<MessageTextReference>(FindObjectsInactive.Include);
+ 
+-            // If that text couldn't be found, we display an error and exit as it is required for the game manager to work
+             if (textRef == null)
+             {
+                 Debug.LogError("You need to add the Menus prefab in the scene to use the GameManager!");
+@@ -68,7 +63,6 @@ namespace Tanks.Complete
+             m_TitleText = textRef.Text;
+             m_TitleText.text = "";
+ 
+-            // The GameManager require 4 tanks prefabs, as the start menu have 4 fixed slot and need the 4 tanks to show there
+             if (m_Tank1Prefab == null || m_Tank2Prefab == null || m_Tank3Prefab == null || m_Tank4Prefab == null)
+             {
+                 Debug.LogError("You need to assign 4 tank prefab in the GameManager!");
+@@ -77,14 +71,12 @@ namespace Tanks.Complete
+ 
+         void GameStart()
+         {
+-            // Create the delays so they only have to be made once.
+             m_StartWait = new WaitForSeconds (m_StartDelay);
+             m_EndWait = new WaitForSeconds (m_EndDelay);
+ 
+             SpawnAllTanks();
+             SetCameraTargets();
+ 
+-            // Once the tanks have been created and the camera is using them as targets, start the game.
+             StartCoroutine (GameLoop ());
+         }
+ 
+@@ -100,7 +92,6 @@ namespace Tanks.Complete
+             }
+         }
+ 
+-        // Called by the menu, passing along the data from the selection made by the player in the menu
+         public void StartGame(PlayerData[] playerData)
+         {
+             m_TankData = playerData;
+@@ -111,18 +102,13 @@ namespace Tanks.Complete
+ 
+         private void SpawnAllTanks()
+         {
+-            // For all the tanks...
+             for (int i = 0; i < m_PlayerCount; i++)
+             {
+                 var playerData = m_TankData[i];
+                 
+-                // ... create them, set their player number and references needed for control.
+                 m_SpawnPoints[i].m_Instance =
+                     Instantiate(playerData.UsedPrefab, m_SpawnPoints[i].m_SpawnPoint.position, m_SpawnPoints[i].m_SpawnPoint.rotation) as GameObject;
+ 
+-                //this guard against possible user error : if they created a prefab with Is Computer Control set to true
+-                //then all of those prefab would be bots. So we ensure it's to false (the IsComputer from player data
+-                //will re-enable this if needed when the game start)
+                 var mov = m_SpawnPoints[i].m_Instance.GetComponent<TankMovement>();
+                 mov.m_IsComputerControlled = false;
+                 
+@@ -132,7 +118,6 @@ namespace Tanks.Complete
+                 m_SpawnPoints[i].m_ComputerControlled = playerData.IsComputer;
+             }
+ 
+-            //we delayed setup after all tanks are created as they expect to have access to all other tanks in the manager
+             foreach (var tank in m_SpawnPoints)
+             {
+                 if(tank.m_Instance == null)
+@@ -145,43 +130,31 @@ namespace Tanks.Complete
+ 
+         private void SetCameraTargets()
+         {
+-            // Create a collection of transforms the same size as the number of tanks.
+             Transform[] targets = new Transform[m_PlayerCount];
+ 
+-            // For each of these transforms...
+             for (int i = 0; i < targets.Length; i++)
+             {
+-                // ... set it to the appropriate tank transform.
+                 targets[i] = m_SpawnPoints[i].m_Instance.transform;
+             }
+ 
+-            // These are the targets the camera should follow.
+             m_CameraControl.m_Targets = targets;
+         }
+ 
+ 
+-        // This is called from start and will run each phase of the game one after another.
+         private IEnumerator GameLoop ()
+         {
+-            // Start off by running the 'RoundStarting' coroutine but don't return until it's finished.
+             yield return StartCoroutine (RoundStarting ());
+ 
+-            // Once the 'RoundStarting' coroutine is finished, run the 'RoundPlaying' coroutine but don't return until it's finished.
+             yield return StartCoroutine (RoundPlaying());
+ 
+-            // Once execution has returned here, run the 'RoundEnding' coroutine, again don't return until it's finished.
+             yield return StartCoroutine (RoundEnding());
+ 
+-            // This code is not run until 'RoundEnding' has finished.  At which point, check if a game winner has been found.
+             if (m_GameWinner != null)
+             {
+-                // If there is a game winner, restart the level.
+                 SceneManager.LoadScene (0);
+             }
+             else
+             {
+-                // If there isn't a winner yet, restart this coroutine so the loop continues.
+-                // Note that this coroutine doesn't yield.  This means that the current version of the GameLoop will end.
+                 StartCoroutine (GameLoop ());
+             }
+         }
+@@ -189,34 +162,26 @@ namespace Tanks.Complete
+ 
+         private IEnumerator RoundStarting ()
+         {
+-            // As soon as the round starts reset the tanks and make sure they can't move.
+             ResetAllTanks ();
+             DisableTankControl ();
+ 
+-            // Snap the camera's zoom and position to something appropriate for the reset tanks.
+             m_CameraControl.SetStartPositionAndSize ();
+ 
+-            // Increment the round number and display text showing the players what round it is.
+             m_RoundNumber++;
+             m_TitleText.text = "ROUND " + m_RoundNumber;
+ 
+-            // Wait for the specified length of time until yielding control back to the game loop.
+             yield return m_StartWait;
+         }
+ 
+ 
+         private IEnumerator RoundPlaying ()
+         {
+-            // As soon as the round begins playing let the players control the tanks.
+             EnableTankControl ();
+ 
+-            // Clear the text from the screen.
+             m_TitleText.text = string.Empty;
+ 
+-            // While there is not one tank left...
+             while (!OneTankLeft())
+             {
+-                // ... return on the next frame.
+                 yield return null;
+             }
+         }
+@@ -224,103 +189,76 @@ namespace Tanks.Complete
+ 
+         private IEnumerator RoundEnding ()
+         {
+-            // Stop tanks from moving.
+             DisableTankControl ();
+ 
+-            // Clear the winner from the previous round.
+             m_RoundWinner = null;
+ 
+-            // See if there is a winner now the round is over.
+             m_RoundWinner = GetRoundWinner ();
+ 
+-            // If there is a winner, increment their score.
+             if (m_RoundWinner != null)
+                 m_RoundWinner.m_Wins++;
+ 
+-            // Now the winner's score has been incremented, see if someone has one the game.
+             m_GameWinner = GetGameWinner ();
+ 
+-            // Get a message based on the scores and whether or not there is a game winner and display it.
+             string message = EndMessage ();
+             m_TitleText.text = message;
+ 
+-            // Wait for the specified length of time until yielding control back to the game loop.
+             yield return m_EndWait;
+         }
+ 
+ 
+-        // This is used to check if there is one or fewer tanks remaining and thus the round should end.
+         private bool OneTankLeft()
+         {
+-            // Start the count of tanks left at zero.
+             int numTanksLeft = 0;
+ 
+-            // Go through all the tanks...
+             for (int i = 0; i < m_PlayerCount; i++)
+             {
+-                // ... and if they are active, increment the counter.
+                 if (m_SpawnPoints[i].m_Instance.activeSelf)
+                     numTanksLeft++;
+             }
+ 
+-            // If there are one or fewer tanks remaining return true, otherwise return false.
+             return numTanksLeft <= 1;
+         }
+         
+         
+-        // This function is to find out if there is a winner of the round.
+-        // This function is called with the assumption that 1 or fewer tanks are currently active.
+         private TankManager GetRoundWinner()
+         {
+-            // Go through all the tanks...
+             for (int i = 0; i < m_PlayerCount; i++)
+             {
+-                // ... and if one of them is active, it is the winner so return it.
+                 if (m_SpawnPoints[i].m_Instance.activeSelf)
+                     return m_SpawnPoints[i];
+             }
+ 
+-            // If none of the tanks are active it is a draw so return null.
+             return null;
+         }
+ 
+ 
+-        // This function is to find out if there is a winner of the game.
+         private TankManager GetGameWinner()
+         {
+-            // Go through all the tanks...
+             for (int i = 0; i < m_PlayerCount; i++)
+             {
+-                // ... and if one of them has enough rounds to win the game, return it.
+                 if (m_SpawnPoints[i].m_Wins == m_NumRoundsToWin)
+                     return m_SpawnPoints[i];
+             }
+ 
+-            // If no tanks have enough rounds to win, return null.
+             return null;
+         }
+ 
+ 
+-        // Returns a string message to display at the end of each round.
+         private string EndMessage()
+         {
+-            // By default when a round ends there are no winners so the default end message is a draw.
+             string message = "DRAW!";
+ 
+-            // If there is a winner then change the message to reflect that.
+             if (m_RoundWinner != null)
+                 message = m_RoundWinner.m_ColoredPlayerText + " WINS THE ROUND!";
+ 
+-            // Add some line breaks after the initial message.
+             message += "\n\n\n\n";
+ 
+-            // Go through all the tanks and add each of their scores to the message.
+             for (int i = 0; i < m_PlayerCount; i++)
+             {
+                 message += m_SpawnPoints[i].m_ColoredPlayerText + ": " + m_SpawnPoints[i].m_Wins + " WINS\n";
+             }
+ 
+-            // If there is a game winner, change the entire message to reflect that.
+             if (m_GameWinner != null)
+                 message = m_GameWinner.m_ColoredPlayerText + " WINS THE GAME!";
+ 
+@@ -328,7 +266,6 @@ namespace Tanks.Complete
+         }
+ 
+ 
+-        // This function is used to turn all the tanks back on and reset their positions and properties.
+         private void ResetAllTanks()
+         {
+             for (int i = 0; i < m_PlayerCount; i++)
+diff --git a/Assets/_Tanks/Scripts/Managers/TankManager.cs b/Assets/_Tanks/Scripts/Managers/TankManager.cs
+index 3255180..d09a822 100644
+--- a/Assets/_Tanks/Scripts/Managers/TankManager.cs
++++ b/Assets/_Tanks/Scripts/Managers/TankManager.cs
+@@ -12,74 +12,57 @@ namespace Tanks.Complete
+     [Serializable]
+     public class TankManager
+     {
+-        // This class is to manage various settings on a tank.
+-        // It works with the GameManager class to control how the tanks behave
+-        // and whether or not players have control of their tank in the 
+-        // different phases of the game.
+-
+-        [HideInInspector] public Color m_PlayerColor;           // This is the color this tank will be tinted.
+-        public Transform m_SpawnPoint;                          // The position and direction the tank will have when it spawns.
+-        [HideInInspector] public int m_PlayerNumber;            // This specifies which player this the manager for.
+-        [HideInInspector] public string m_ColoredPlayerText;    // A string that represents the player with their number colored to match their tank.
+-        [HideInInspector] public GameObject m_Instance;         // A reference to the instance of the tank when it is created.
+-        [HideInInspector] public int m_Wins;                    // The number of wins this player has so far.
+-        [HideInInspector] public bool m_ComputerControlled;     // Is that tank computer controlled
++        [HideInInspector] public Color m_PlayerColor;
++        public Transform m_SpawnPoint;
++        [HideInInspector] public int m_PlayerNumber;
++        [HideInInspector] public string m_ColoredPlayerText;
++        [HideInInspector] public GameObject m_Instance;
++        [HideInInspector] public int m_Wins;
++        [HideInInspector] public bool m_ComputerControlled;
+         
+-        public int ControlIndex { get; set; } = 1;              //this defines the index of the control 1 = left keyboard or pad, 2 = right keyboard, -1 = no control
++        public int ControlIndex { get; set; } = 1;
+ 
+ 
+-        private TankMovement m_Movement;                        // Reference to tank's movement script, used to disable and enable control.
+-        private TankShooting m_Shooting;                        // Reference to tank's shooting script, used to disable and enable control.
+-        private GameObject m_CanvasGameObject;                  // Used to disable the world space UI during the Starting and Ending phases of each round.
++        private TankMovement m_Movement;
++        private TankShooting m_Shooting;
++        private GameObject m_CanvasGameObject;
+         
+-        private TankAI m_AI;                                    // The Tank AI script that let a tank be a bot controlled by the computer
+-        private InputUser m_InputUser;                          // The Input user link to that tank. Input user identify a single player in the Input system
++        private TankAI m_AI;
++        private InputUser m_InputUser;
+         
+         public void Setup (GameManager manager)
+         {
+-            // Get references to the components.
+             m_Movement = m_Instance.GetComponent<TankMovement> ();
+             m_Shooting = m_Instance.GetComponent<TankShooting> ();
+             m_AI = m_Instance.GetComponent<TankAI> ();
+             m_CanvasGameObject = m_Instance.GetComponentInChildren<Canvas> ().gameObject;
+ 
+-            // Assign the Input User of that Tank to the script controlling input system binding, so the move/fire actions
+-            // get only triggered by the right input for that users (e.g. arrow doesn't trigger move if that input user use WASD)
+             var inputUser = m_Instance.GetComponent<TankInputUser>();
+             inputUser.SetNewInputUser(m_InputUser);
+ 
+-            // Toggle computer controlled on the movement/firing if this tank was tagged as being computer controlled
+             m_Movement.m_IsComputerControlled = m_ComputerControlled;
+             m_Shooting.m_IsComputerControlled = m_ComputerControlled;
+             
+-            // Pass along the player number and control index to the movement components. See the TankMovement script for
+-            // hose those are used to decided which input the movement respond to.
+             m_Movement.m_PlayerNumber = m_PlayerNumber;
+             m_Movement.ControlIndex = ControlIndex;
+ 
+-            // If this tank is computer controlled, add a TankAI component that take care of controlling the behavior
+             if(m_ComputerControlled)
+             {
+                 m_AI = m_Instance.AddComponent<TankAI>();
+                 m_AI.Setup(manager);
+             }
+             
+-            // Create a string using the correct color that says 'PLAYER 1' etc based on the tank's color and the player's number.
+             m_ColoredPlayerText = "<color=#" + ColorUtility.ToHtmlStringRGB(m_PlayerColor) + ">PLAYER " + m_PlayerNumber + "</color>";
+ 
+-            // Get all of the renderers of the tank.
+             MeshRenderer[] renderers = m_Instance.GetComponentsInChildren<MeshRenderer> ();
+ 
+-            // Go through all the renderers...
+             for (int i = 0; i < renderers.Length; i++)
+             {
+                 var renderer = renderers[i];
+                 for (int j = 0; j < renderer.materials.Length; ++j)
+                 {
+-                    // If the material is the tank color one...
+                     if (renderer.materials[j].name.Contains("TankColor"))
+                     {
+-                        // change its color to the player color
+                         renderer.materials[j].color = m_PlayerColor;
+                     }
+                 }
+@@ -87,7 +70,6 @@ namespace Tanks.Complete
+         }
+ 
+ 
+-        // Used during the phases of the game where the player shouldn't be able to control their tank.
+         public void DisableControl ()
+         {
+             m_Movement.enabled = false;
+@@ -99,7 +81,6 @@ namespace Tanks.Complete
+         }
+ 
+ 
+-        // Used during the phases of the game where the player should be able to control their tank.
+         public void EnableControl ()
+         {
+             m_Movement.enabled = true;
+@@ -111,7 +92,6 @@ namespace Tanks.Complete
+         }
+ 
+ 
+-        // Used at the start of each round to put the tank into it's default state.
+         public void Reset ()
+         {
+             m_Instance.transform.position = m_SpawnPoint.position;
+@@ -124,10 +104,6 @@ namespace Tanks.Complete
+     
+     
+     #if UNITY_EDITOR
+-    // This is a class only used in the unity editor (and not in the final game). It customizes how the TankManager component
+-    // will appear in the Inspector. The default make a foldout entry where SpawnPoint is "inside" the TankManager foldout
+-    // in the manager array in the GameManager. This change this behavior to directly display the spawn point in the TankManager
+-    // Inspector, simplifying the display in the GameManager.
+     [CustomPropertyDrawer(typeof(TankManager))]
+     public class TankManagerDrawer : PropertyDrawer
+     {
+diff --git a/Assets/_Tanks/Scripts/PowerUp/PowerUp.cs b/Assets/_Tanks/Scripts/PowerUp/PowerUp.cs
+index bf90a59..dfeef17 100644
+--- a/Assets/_Tanks/Scripts/PowerUp/PowerUp.cs
++++ b/Assets/_Tanks/Scripts/PowerUp/PowerUp.cs
+@@ -35,11 +35,10 @@ namespace Tanks.Complete
+         [Tooltip("Amount by which the damage will be multiplied.")]
+         [SerializeField] private float m_DamageMultiplier = 2f;
+ 
+-        private PowerUpSpawner m_Spawner;               // Reference to the spawner that instantiated this PowerUp
++        private PowerUpSpawner m_Spawner;
+ 
+         private void Update()
+         {
+-            // Rotates the power up game object
+             transform.rotation = Quaternion.Euler(0, 50f * Time.time, 0);
+         }
+ 
+@@ -48,46 +47,34 @@ namespace Tanks.Complete
+         {
+             if (other.gameObject.layer == LayerMask.NameToLayer("Players"))
+             {
+-                // Reference to the PowerUpDetector component of the tank.
+                 PowerUpDetector m_PowerUpDetector = other.gameObject.GetComponent<PowerUpDetector>();
+ 
+-                // Checks that the tank has not picked up other power up
+                 if (!m_PowerUpDetector.m_HasActivePowerUp)
+                 {
+-                    // The power up reduces is a shield
+                     if (m_PowerUpType == PowerUpType.DamageReduction)
+                         m_PowerUpDetector.PickUpShield(m_DamageReduction, m_DurationTime);
+-                    // The power up enhances any speed stat
+                     else if (m_PowerUpType == PowerUpType.Speed)
+                         m_PowerUpDetector.PowerUpSpeed(m_SpeedBonus, m_TurnSpeedBonus, m_DurationTime);
+-                    // The power up enhances any shooting stat
+                     else if (m_PowerUpType == PowerUpType.ShootingBonus)
+                         m_PowerUpDetector.PowerUpShoootingRate(m_CooldownReduction, m_DurationTime);
+-                    // The power up heals the tank
+                     else if (m_PowerUpType == PowerUpType.Healing)
+                         m_PowerUpDetector.PowerUpHealing(m_HealingAmount);
+-                    // The power up makes the tank invincible
+                     else if (m_PowerUpType == PowerUpType.Invincibility)
+                         m_PowerUpDetector.PowerUpInvincibility(m_DurationTime);
+-                    // The power up increases the damage of the shell
+                     else if (m_PowerUpType == PowerUpType.DamageMultiplier)
+                         m_PowerUpDetector.PowerUpSpecialShell(m_DamageMultiplier);
+ 
+-                    // Tells the spawner that the power up has been collected
+                     if (m_Spawner != null)
+                         m_Spawner.CollectPowerUp();
+ 
+-                    // Instantiates the PowerUp weffects
+                     if (m_CollectFX != null)
+                         Instantiate(m_CollectFX, transform.position, Quaternion.identity);
+ 
+-                    // Destroys the Power Up
+                     Destroy(gameObject);
+                 }
+             }
+         }
+ 
+-        // Sets m_Spawner
+         public void SetSpawner(PowerUpSpawner spawner)
+         {
+             m_Spawner = spawner;
+diff --git a/Assets/_Tanks/Scripts/PowerUp/PowerUpFX.cs b/Assets/_Tanks/Scripts/PowerUp/PowerUpFX.cs
+index ad4b559..37c665d 100644
+--- a/Assets/_Tanks/Scripts/PowerUp/PowerUpFX.cs
++++ b/Assets/_Tanks/Scripts/PowerUp/PowerUpFX.cs
+@@ -4,8 +4,8 @@ namespace Tanks.Complete
+ {
+     public class PowerUpFX : MonoBehaviour
+     {
+-        private AudioSource m_PowerUpAudioSource;       // Reference to the AudioSource component
+-        private float lifeTime = 3f;                    // Time in seconds that this GameObject will be in scene before being destroyed
++        private AudioSource m_PowerUpAudioSource;
++        private float lifeTime = 3f;
+ 
+         private void Start()
+         {
+@@ -15,7 +15,6 @@ namespace Tanks.Complete
+ 
+         private void Update()
+         {
+-            // Reduces its lifetime to know when to destroy this effect
+             lifeTime -= Time.deltaTime;
+             if (lifeTime <= 0.0f)
+                 Destroy(gameObject);
+diff --git a/Assets/_Tanks/Scripts/PowerUp/PowerUpHUD.cs b/Assets/_Tanks/Scripts/PowerUp/PowerUpHUD.cs
+index ca2556e..5030f7b 100644
+--- a/Assets/_Tanks/Scripts/PowerUp/PowerUpHUD.cs
++++ b/Assets/_Tanks/Scripts/PowerUp/PowerUpHUD.cs
+@@ -17,30 +17,20 @@ namespace Tanks.Complete
+ 
+         private void Update()
+         {
+-            // Checks that there is an active power up
+             if (m_HasActivePowerUp)
+             {
+-                // Rotates the PowerUpHUD
+                 transform.rotation = Quaternion.Euler(0, 100f * Time.time, 0);
+-                // Checks that the power up is not time based (just EnhancedShell for now)
+                 if(m_ActivePowerUpHUD != m_EnhancedShellHUD)
+                 {
+-                    // If the display time hasn't run out, the time that has passed gets updated
+                     if (m_DisplayTime > 0f)
+                         m_DisplayTime -= Time.deltaTime;
+ 
+-                    // If there is no display time left, this power up HUD gets disabled
+                     else
+                         DisableActiveHUD();
+                 }
+             }
+         }
+ 
+-        /// <summary>
+-        /// 
+-        /// </summary>
+-        /// <param name="powerUpType">Type of the power up to activate.</param>
+-        /// <param name="duration"> Time of displaying the power up HUD. This should coincide with the duration time of the power up.</param>
+         public void SetActivePowerUp(PowerUp.PowerUpType powerUpType, float duration)
+         {
+             switch (powerUpType)
+@@ -74,9 +64,6 @@ namespace Tanks.Complete
+             m_HasActivePowerUp = true;
+         }
+ 
+-        /// <summary>
+-        /// Disables the Active Power Up HUD of the Tank.
+-        /// </summary>
+         public void DisableActiveHUD()
+         {
+             m_ActivePowerUpHUD.SetActive(false);
+diff --git a/Assets/_Tanks/Scripts/PowerUp/PowerUpSpawner.cs b/Assets/_Tanks/Scripts/PowerUp/PowerUpSpawner.cs
+index 72e4458..c272172 100644
+--- a/Assets/_Tanks/Scripts/PowerUp/PowerUpSpawner.cs
++++ b/Assets/_Tanks/Scripts/PowerUp/PowerUpSpawner.cs
+@@ -13,16 +13,13 @@ namespace Tanks.Complete
+ 
+         private void Start()
+         {
+-            // Spawn a random power up when the game starts.
+             SpawnRandomPowerUp();
+         }
+ 
+         private void SpawnRandomPowerUp()
+         {
+-            // Ensure there are power ups available to spawn.
+             if (m_PowerUps.Length > 0)
+             {
+-                // Instantiates a random power up from the power ups array
+                 int randomNumber = Random.Range(0, m_PowerUps.Length);
+                 Vector3 positionToSpawn = transform.position;
+                 positionToSpawn.y = 1.09f;
+@@ -31,7 +28,6 @@ namespace Tanks.Complete
+             }
+         }
+ 
+-        // Called when a power up is collected, starting a respawn timer.
+         public void CollectPowerUp()
+         {
+             StartCoroutine(RespawnPowerUp());
+@@ -39,7 +35,6 @@ namespace Tanks.Complete
+ 
+         private IEnumerator RespawnPowerUp()
+         {
+-            // Wait for the cooldown time then spawns a power up.
+             yield return new WaitForSeconds(m_RespawnCooldown);
+             SpawnRandomPowerUp();
+         }
+diff --git a/Assets/_Tanks/Scripts/Shell/ShellExplosion.cs b/Assets/_Tanks/Scripts/Shell/ShellExplosion.cs
+index f17e62b..8386e26 100644
+--- a/Assets/_Tanks/Scripts/Shell/ShellExplosion.cs
++++ b/Assets/_Tanks/Scripts/Shell/ShellExplosion.cs
+@@ -4,89 +4,68 @@ namespace Tanks.Complete
+ {
+     public class ShellExplosion : MonoBehaviour
+     {
+-        public LayerMask m_TankMask;                        // Used to filter what the explosion affects, this should be set to "Players".
+-        public ParticleSystem m_ExplosionParticles;         // Reference to the particles that will play on explosion.
+-        public AudioSource m_ExplosionAudio;                // Reference to the audio that will play on explosion.
+-        [HideInInspector] public float m_MaxLifeTime = 2f;  // The time in seconds before the shell is removed.
++        public LayerMask m_TankMask;
++        public ParticleSystem m_ExplosionParticles;
++        public AudioSource m_ExplosionAudio;
++        [HideInInspector] public float m_MaxLifeTime = 2f;
+ 
+-        // All those are hidden in inspector as they will actually come from the TankShooting scripts
+-        [HideInInspector] public float m_MaxDamage = 100f;                    // The amount of damage done if the explosion is centred on a tank.
+-        [HideInInspector] public float m_ExplosionForce = 50f;                // The amount of force added to a tank at the centre of the explosion.
+-        [HideInInspector] public float m_ExplosionRadius = 5f;                // The maximum distance away from the explosion tanks can be and are still affected.
++        [HideInInspector] public float m_MaxDamage = 100f;
++        [HideInInspector] public float m_ExplosionForce = 50f;
++        [HideInInspector] public float m_ExplosionRadius = 5f;
+ 
+ 
+         private void Start ()
+         {
+-            // If it isn't destroyed by then, destroy the shell after its lifetime.
+             Destroy (gameObject, m_MaxLifeTime);
+         }
+ 
+ 
+         private void OnTriggerEnter (Collider other)
+         {
+-			// Collect all the colliders in a sphere from the shell's current position to a radius of the explosion radius.
+             Collider[] colliders = Physics.OverlapSphere (transform.position, m_ExplosionRadius, m_TankMask);
+ 
+-            // Go through all the colliders...
+             for (int i = 0; i < colliders.Length; i++)
+             {
+-                // ... and find their rigidbody.
+                 Rigidbody targetRigidbody = colliders[i].GetComponent<Rigidbody> ();
+ 
+-                // If they don't have a rigidbody, go on to the next collider.
+                 if (!targetRigidbody)
+                     continue;
+ 
+-                // Add an explosion force.
+                 targetRigidbody.GetComponent<TankMovement>().AddExplosionForce(m_ExplosionForce, transform.position, m_ExplosionRadius);
+ 
+-                // Find the TankHealth script associated with the rigidbody.
+                 TankHealth targetHealth = targetRigidbody.GetComponent<TankHealth> ();
+ 
+-                // If there is no TankHealth script attached to the gameobject, go on to the next collider.
+                 if (!targetHealth)
+                     continue;
+ 
+-                // Calculate the amount of damage the target should take based on it's distance from the shell.
+                 float damage = CalculateDamage (targetRigidbody.position);
+ 
+-                // Deal this damage to the tank.
+                 targetHealth.TakeDamage (damage);
+             }
+ 
+-            // Unparent the particles from the shell.
+             m_ExplosionParticles.transform.parent = null;
+ 
+-            // Play the particle system.
+             m_ExplosionParticles.Play();
+ 
+-            // Play the explosion sound effect.
+             m_ExplosionAudio.Play();
+ 
+-            // Once the particles have finished, destroy the gameobject they are on.
+             ParticleSystem.MainModule mainModule = m_ExplosionParticles.main;
+             Destroy (m_ExplosionParticles.gameObject, mainModule.duration);
+ 
+-            // Destroy the shell.
+             Destroy (gameObject);
+         }
+ 
+ 
+         private float CalculateDamage (Vector3 targetPosition)
+         {
+-            // Create a vector from the shell to the target.
+             Vector3 explosionToTarget = targetPosition - transform.position;
+ 
+-            // Calculate the distance from the shell to the target.
+             float explosionDistance = explosionToTarget.magnitude;
+ 
+-            // Calculate the proportion of the maximum distance (the explosionRadius) the target is away.
+             float relativeDistance = (m_ExplosionRadius - explosionDistance) / m_ExplosionRadius;
+ 
+-            // Calculate damage as this proportion of the maximum possible damage.
+             float damage = relativeDistance * m_MaxDamage;
+ 
+-            // Make sure that the minimum damage is always 0.
+             damage = Mathf.Max (0f, damage);
+ 
+             return damage;
+diff --git a/Assets/_Tanks/Scripts/Tank/PowerUpDetector.cs b/Assets/_Tanks/Scripts/Tank/PowerUpDetector.cs
+index 42dc4b5..35b7ddd 100644
+--- a/Assets/_Tanks/Scripts/Tank/PowerUpDetector.cs
++++ b/Assets/_Tanks/Scripts/Tank/PowerUpDetector.cs
+@@ -5,9 +5,7 @@ namespace Tanks.Complete
+ {
+     public class PowerUpDetector : MonoBehaviour
+     {
+-        // Variable that indicates if the tank has a PowerUp right now
+         public bool m_HasActivePowerUp = false;
+-        // References to the tank's components
+         private TankShooting m_TankShooting;
+         private TankMovement m_TankMovement;
+         private TankHealth m_TankHealth;
+@@ -15,87 +13,69 @@ namespace Tanks.Complete
+ 
+         private void Awake()
+         {
+-            // Get references to the tank's movement, shooting, and health components
+             m_TankShooting = GetComponent<TankShooting>();
+             m_TankMovement = GetComponent<TankMovement>();
+             m_TankHealth = GetComponent<TankHealth>();
+             m_PowerUpHUD = GetComponentInChildren<PowerUpHUD>();
+         }
+ 
+-        // Applies a temporary speed boost to the tank
+         public void PowerUpSpeed(float speedBoost, float turnSpeedBoost, float duration)
+         {
+             StartCoroutine(IncreaseSpeed(speedBoost, turnSpeedBoost, duration));
+         }
+ 
+-        // Coroutine to temporarily increase the tank's movement speed and turn speed
+         private IEnumerator IncreaseSpeed(float speedBoost, float TurnSpeedBoost, float duration)
+         {
+-            // Apply the speed boost
+             m_HasActivePowerUp = true;
+             m_PowerUpHUD.SetActivePowerUp(PowerUp.PowerUpType.Speed, duration);
+             m_TankMovement.m_Speed += speedBoost;
+             m_TankMovement.m_TurnSpeed += TurnSpeedBoost;
+-            // Wait for the duration of the power up
+             yield return new WaitForSeconds(duration);
+-            // Revert the speed boost 
+             m_TankMovement.m_Speed -= speedBoost;
+             m_TankMovement.m_TurnSpeed -= TurnSpeedBoost;
+             m_HasActivePowerUp = false;
+         }
+ 
+-        // Applies a temporary shooting rate boost to the tank
+         public void PowerUpShoootingRate(float cooldownReduction, float duration)
+         {
+             StartCoroutine(IncreaseShootingRate(cooldownReduction, duration));
+         }
+ 
+-        // Coroutine to temporarily enhance the tank's shooting rate
+         private IEnumerator IncreaseShootingRate(float cooldownReduction, float duration)
+         {
+-            // Apply the shooting cooldown reduction if it is greater than zero
+             if(cooldownReduction > 0)
+             {
+                 m_HasActivePowerUp = true;
+                 m_PowerUpHUD.SetActivePowerUp(PowerUp.PowerUpType.ShootingBonus, duration);
+                 m_TankShooting.m_ShotCooldown *= cooldownReduction;
+-                // Wait for the duration of the power up
+                 yield return new WaitForSeconds(duration);
+-                // Revert the shooting boost after the duration ends
+                 m_TankShooting.m_ShotCooldown /= cooldownReduction;
+                 m_HasActivePowerUp = false;
+             }
+         }
+ 
+-        // Grants the tank a temporary shield if it does not already have one
+         public void PickUpShield(float shieldAmount, float duration)
+         {
+             if (!m_TankHealth.m_HasShield)
+                 StartCoroutine(ActivateShield(shieldAmount, duration));
+         }
+ 
+-        // Grants the tank a temporary shield if it does not already have one
+         private IEnumerator ActivateShield(float shieldAmount, float duration)
+         {
+-            // Activate the shield
+             m_HasActivePowerUp = true;
+             m_PowerUpHUD.SetActivePowerUp(PowerUp.PowerUpType.DamageReduction, duration);
+             m_TankHealth.ToggleShield(shieldAmount);
+-            // Wait for the duration of the power up
+             yield return new WaitForSeconds(duration);
+-            // Deactivate the shield
+             m_TankHealth.ToggleShield(shieldAmount);
+             m_HasActivePowerUp = false;
+         }
+ 
+-        // Increases the health of the tank
+         public void PowerUpHealing(float healAmount)
+         {
+             m_TankHealth.IncreaseHealth(healAmount);
+             m_PowerUpHUD.SetActivePowerUp(PowerUp.PowerUpType.Healing, 1.0f);
+         }
+ 
+-        // Makes the tank invulnerable for an amount of time
+         public void PowerUpInvincibility(float duration)
+         {
+             StartCoroutine(ActivateInvincibility(duration));
+@@ -111,7 +91,6 @@ namespace Tanks.Complete
+             m_TankHealth.ToggleInvincibility();
+         }
+ 
+-        // Equips the tank with a special shell that increases damage
+         public void PowerUpSpecialShell(float damageMultiplier)
+         {
+             m_HasActivePowerUp = true;
+diff --git a/Assets/_Tanks/Scripts/Tank/TankAI.cs b/Assets/_Tanks/Scripts/Tank/TankAI.cs
+index f3404a3..9cee6df 100644
+--- a/Assets/_Tanks/Scripts/Tank/TankAI.cs
++++ b/Assets/_Tanks/Scripts/Tank/TankAI.cs
+@@ -7,80 +7,61 @@ using Random = UnityEngine.Random;
+ 
+ namespace Tanks.Complete
+ {
+-    /// <summary>
+-    /// Handle the tank control when the tank is set to Computer controlled
+-    /// </summary>
+     public class TankAI : MonoBehaviour
+     {
+-        // Possible state of the Computer controlled tank : either seeking itsd target or fleeing from it
+         enum State
+         {
+             Seek,
+             Flee
+         }
+     
+-        private TankMovement m_Movement;                // Reference to the movement script
+-        private TankShooting m_Shooting;                // Reference to the shooting script
++        private TankMovement m_Movement;
++        private TankShooting m_Shooting;
+         
+-        private float m_PathfindTime = 0.5f;            // Only trigger a pathfind after this time, to not degrade performance
+-        private float m_PathfindTimer = 0.0f;           // The time until the next pathfind call
++        private float m_PathfindTime = 0.5f;
++        private float m_PathfindTimer = 0.0f;
+ 
+-        private Transform m_CurrentTarget = null;       // Which Transform the tank is following
+-        private float m_MaxShootingDistance = 0.0f;     // Store the max shooting distance based on TankShooting settings
++        private Transform m_CurrentTarget = null;
++        private float m_MaxShootingDistance = 0.0f;
+ 
+-        private float m_TimeBetweenShot = 2.0f;         // The AI Tank have a cooldown on shot to avoid spamming shot
+-        private float m_ShotCooldown = 0.0f;            // The remaining time until the next shot
++        private float m_TimeBetweenShot = 2.0f;
++        private float m_ShotCooldown = 0.0f;
+ 
+-        private Vector3 m_LastTargetPosition;           // The position of the target last frame
+-        private float m_TimeSinceLastTargetMove;        // Timer counting how long the target hasn't moved. This is used to trigger the flee state
++        private Vector3 m_LastTargetPosition;
++        private float m_TimeSinceLastTargetMove;
+         private float m_TimeCloseToTarget;
+ 
+-        private Vector3 m_FleeingLastPosition;          // Used to check how far we moved as we flee. If this doesn't change for a while, need to pick another point
++        private Vector3 m_FleeingLastPosition;
+         private float m_SinceLastFleeingMove = 0.0f;
+         
+-        private NavMeshPath m_CurrentPath = null;       // The current path followed by the tank.
+-        private int m_CurrentCorner = 0;                // Which corner of the path the tank is currently going forward to 
+-        private bool m_IsMoving = false;                // Is the tank currently moving or not (the tank stop to shoot)
++        private NavMeshPath m_CurrentPath = null;
++        private int m_CurrentCorner = 0;
++        private bool m_IsMoving = false;
+ 
+-        private GameObject[] m_AllTanks;                // List of all the tanks in the scene.
++        private GameObject[] m_AllTanks;
+ 
+-        private State m_CurrentState = State.Seek;      // The current AI state the Tank is in.
++        private State m_CurrentState = State.Seek;
+ 
+         private void Awake()
+         {
+-            //Awake is still called on disabled component. So that the user can test disabling AI on a single tank
+-            //we ensure that the component wasn't disabled before initializing everything
+             if(!isActiveAndEnabled)
+                 return;
+             
+             m_Movement = GetComponent<TankMovement>();
+             m_Shooting = GetComponent<TankShooting>();
+ 
+-            // ensure that both movement and shooting script are set in "computer controlled" mode
+             m_Movement.m_IsComputerControlled = true;
+             m_Shooting.m_IsComputerControlled = true;
+             
+-            // to avoid all computer controlled tank pathfinding together (and taxing the CPU), AI tank have a random
+-            // pathfinding time that will stagger them across multiple frame
+             m_PathfindTime = Random.Range(0.3f, 0.6f);
+             
+-            // Compute and store what is the maximum distance a shot from this tank can reach. This will be used when deciding when
+-            // to start charging and when to release a shot
+             m_MaxShootingDistance = Vector3.Distance(m_Shooting.GetProjectilePosition(1.0f), transform.position);
+             
+-            // We use FindObjectByType to get all Tanks, to not depend on GameManager so user can try adding AI in an
+-            // empty scene where no GameManager was added yet.
+             m_AllTanks = FindObjectsByType<TankMovement>(FindObjectsInactive.Exclude, FindObjectsSortMode.None).Select(e => e.gameObject).ToArray();
+         }
+ 
+-        // If a GameManager exist, it will call this function after creating a computer controlled tank. This just replace
+-        // the list of tanks with the one from the GameManager
+         public void Setup(GameManager manager)
+         {
+-            // If this was using manager.m_SpawnPoints.ToArray(), it will get an array of TankManager, but m_AllTanks is an array of Transform.
+-            // The Select function will call the function passed as a parameter on each entry in the list (here TankManager) and make a new list
+-            // containing what each return. The function we pass here, e => e.m_Instance, return the Transform of the tank the TankManager manage
+-            // so effectively manager.m_SpawnPoints.Select(e => e.m_Instance) give a list of all the tanks transform.
+             m_AllTanks = manager.m_SpawnPoints.Select(e => e.m_Instance).ToArray();
+         }
+ 
+@@ -91,12 +72,9 @@ namespace Tanks.Complete
+ 
+         void Update()
+         {
+-            // If there is a cooldown active, we decrement it by the time elapsed since last frame
+             if(m_ShotCooldown > 0)
+                 m_ShotCooldown -= Time.deltaTime;
+             
+-            // increment the time since last pathfind. The SeekUpdate will check if it goes over the pathfinding time
+-            // and if it need to trigger a new pathfinding
+             m_PathfindTimer += Time.deltaTime;
+ 
+             switch (m_CurrentState)
+@@ -112,61 +90,42 @@ namespace Tanks.Complete
+ 
+         void SeekUpdate()
+         {
+-            // To lighten the load on the CPU the tanks do not pathfind to their target every single frame. Instead, they
+-            // wait a bit between each pathfind. They will go toward an "outdated" position in between, but as the pathfind time is 
+-            // under 1s, this is visually not noticeable and a lot more efficient than trying to pathfinding 30+ time each second
+             if (m_PathfindTimer > m_PathfindTime)
+             {
+-                // reset the time since last pathfind
+                 m_PathfindTimer = 0;
+ 
+-                // This will store each path toward each tank in the scene
+                 NavMeshPath[] paths = new NavMeshPath[m_AllTanks.Length];
+                 
+-                // Initialize the shorted path length to the max value a float can have, so no matter what is the length
+-                // of the first found path, it will for sure be shortest than this initial value
+                 float shortestPath = float.MaxValue;
+-                // which of the path in the paths array we use. By default none, which is represented by -1 here.
+                 int usedPath = -1;
+                 Transform target = null;
+                 
+-                // Calculate a path to every tank and check the closest
+                 for (var i = 0; i < m_AllTanks.Length; i++)
+                 {
+                     var tank = m_AllTanks[i].gameObject;
+ 
+-                    //we don't want the tank to try to target itself, so ignore itself
+                     if (tank == gameObject)
+                         continue;
+                     
+-                    // this is a destroyed or deactivated tank, this is not a valid target
+                     if(tank == null || !tank.activeInHierarchy)
+                         continue;
+ 
+                     paths[i] = new NavMeshPath();
+ 
+-                    // this return true if a path was found
+                     if (NavMesh.CalculatePath(transform.position, tank.transform.position, ~0, paths[i]))
+                     {
+-                        // Compute how long the path is...
+                         float length = GetPathLength(paths[i]);
+-                        // And if it's the shortest path so far, this is the one we want to go after
+                         if (shortestPath > length)
+                         {
+-                            // so this path become the used path
+                             usedPath = i;
+-                            //and its length is now the shortest length to beat
+                             shortestPath = length;
+                             target = tank.transform;
+                         }
+                     }
+                 }
+ 
+-                // usedPath will still be -1 if the tank could not find a path to any tank, otherwise we have a target
+                 if (usedPath != -1)
+                 {
+-                    // we switched target. The last tank we were seeking got farther away than another tank, this new
+-                    // tank become our new target, and we reset the last position as this is now a new target
+                     if (target != m_CurrentTarget)
+                     {
+                         m_CurrentTarget = target;
+@@ -181,46 +140,32 @@ namespace Tanks.Complete
+ 
+                
+             }
+-            // The pathfinding is now either finished or wasn't triggered this frame as it was done recently enough
+-            // The SeekUpdate now seek and try to shot at the target it has
+ 
+-            // This tank have a target...
+             if (m_CurrentTarget != null)
+             {
+-                // check how far our target moved since last update
+                 float targetMovement = Vector3.Distance(m_CurrentTarget.position, m_LastTargetPosition);
+ 
+-                //the target didn't (or barely) moved...
+                 if (targetMovement < 0.001f)
+                 {
+-                    // so we increment the timer. This is used later, if a target we're shooting at haven't moved in 2s, we flee
+                     m_TimeSinceLastTargetMove += Time.deltaTime;
+                 }
+                 else
+                 {
+-                    //the target did move since last time, so we reset the timer since last move to 0.
+                     m_TimeSinceLastTargetMove = 0;
+                 }
+ 
+-                // the current position become the last position that will be used next frame to test if the target moved
+                 m_LastTargetPosition = m_CurrentTarget.position;
+                 
+-                // Get a vector from this tank to its target
+                 Vector3 toTarget = m_CurrentTarget.position - transform.position;
+-                // by setting y to 0, we ensure that the vector to the target is in the flat plane of the ground
+                 toTarget.y = 0;
+                 
+                 float targetDistance = toTarget.magnitude;
+-                // normalize the vector to the target, setting its length to 1, which is useful for some mathematical operations.
+                 toTarget.Normalize();
+ 
+                 if (targetDistance < 3.0f)
+                 {
+-                    // Count how long we've been very close to the target
+                     m_TimeCloseToTarget += Time.deltaTime;
+ 
+-                    // ... if we stay close to the target more than 2s, we're probably running in circle around it, so
+-                    // flee instead to try to get more space to aim at it
+                     if (m_TimeCloseToTarget > 2.0f)
+                     {
+                         StartFleeing();
+@@ -232,33 +177,20 @@ namespace Tanks.Complete
+                     m_TimeCloseToTarget = 0.0f;
+                 }
+                 
+-                // the dot product between 2 normalized vector is the cosine of the angle between those vector. This is useful as it
+-                // allow to test how aligned those vector are : 1 -> in the same direction, 0 -> 90 deg angle, -1, pointing in opposite direction.
+-                // As we compute the dot product between our forward vector and the vector toward our target, this give use how much we are
+-                // facing our target : if this is close to 1, we are facing straight at our target.
+                 float dotToTarget = Vector3.Dot(toTarget, transform.forward);
+                 
+-                //if we are charging, check if the current shot can reach the target
+                 if (m_Shooting.IsCharging)
+                 {
+-                    // get the estimated point of the projectile with the current charging value
+                     Vector3 currentShotTarget = m_Shooting.GetProjectilePosition(m_Shooting.CurrentChargeRatio);
+-                    // the distance from us to that estimated point
+                     float currentShotDistance = Vector3.Distance(currentShotTarget, transform.position);
+ 
+-                    //if we are facing the target and our shot is charged enough to reach the target, release the shot
+-                    // note : we remove 2 from the target distance as our shot have splash damage, so we can release the
+-                    // shot earlier
+                     if (currentShotDistance >= targetDistance - 2 && dotToTarget > 0.99f)
+                     {
+                         m_IsMoving = false;
+                         m_Shooting.StopCharging();
+                         
+-                        // we just shot, so we set the cooldown to the time between shot (this is decremented each frame in the update function)
+                         m_ShotCooldown = m_TimeBetweenShot;
+                         
+-                        // We just shot, and our target haven't moved for a while. Which mean they are probably also aiming and shooting at us
+-                        // we go into fleeing mode instead of staying there as a static target
+                         if (m_TimeSinceLastTargetMove > 2.0f)
+                         {
+                             StartFleeing();
+@@ -267,19 +199,12 @@ namespace Tanks.Complete
+                 }
+                 else
+                 {
+-                    // We aren't charging yet, so check if the target is closer than our max shooting distance, which mean we can start charging the shot
+-                    // (a "smarter" solution would be to compute how early we can charge so we reach max distance already max charged) 
+                     if (targetDistance < m_MaxShootingDistance)
+                     {
+-                        // This use the navmesh to check if there are any obstacle between us and the target. If this return false
+-                        // this mean there is no unobstructed path, so there *is* an obstacle, so we shouldn't start shooting yet
+                         if (!NavMesh.Raycast(transform.position, m_CurrentTarget.position, out var hit, ~0))
+                         {
+-                            // we stop moving as we can reach our target with our shot
+                             m_IsMoving = false;
+ 
+-                            // if our cooldown is not 0 or below, we have to wait for it to be before shooting. If it is
+-                            // below 0, we start charging
+                             if (m_ShotCooldown <= 0.0f)
+                             {
+                                 m_Shooting.StartCharging();
+@@ -292,12 +217,9 @@ namespace Tanks.Complete
+ 
+         private void FleeUpdate()
+         {
+-            // When fleeing the tank will go toward a random point away from its target. When we reach the last corners
+-            // (i.e. point) of that path, we can go back to seek mode
+             if(m_CurrentCorner >= m_CurrentPath.corners.Length)
+                 m_CurrentState = State.Seek;
+             
+-            //check how far we moved since last update, if we don't move enough for a while, we're stuck somewhere, pick another point
+             var distance = (transform.position - m_FleeingLastPosition).magnitude;
+             m_FleeingLastPosition = transform.position;
+ 
+@@ -318,22 +240,16 @@ namespace Tanks.Complete
+ 
+         private void StartFleeing()
+         {
+-            // To flee, we need to pick a point away from our current target
+             m_FleeingLastPosition = transform.position;
+             m_SinceLastFleeingMove = 0.0f;
+             
+-            // Start by getting the vector *toward* our target...
+             var toTarget = (m_CurrentTarget.position - transform.position).normalized;
+             
+-            // then rotate that vector of a random angle between 90 and 180 degree, which will give us a random direction
+-            // in the opposite direction
+             toTarget = Quaternion.AngleAxis(Random.Range(90.0f, 180.0f) * Mathf.Sign(Random.Range(-1.0f, 1.0f)),
+                 Vector3.up) * toTarget;
+ 
+-            // then we pick a point in that random direction at a random distance between 5 and 20 units
+             toTarget *= Random.Range(5.0f, 20.0f);
+ 
+-            // Finally we compute a path toward that random point, which become our new current path.
+             if (NavMesh.CalculatePath(transform.position, transform.position + toTarget, NavMesh.AllAreas,
+                     m_CurrentPath))
+             {
+@@ -344,21 +260,15 @@ namespace Tanks.Complete
+             }
+         }
+ 
+-        // Contrary to Update (which is called every new frame, so called a variable amount of time per second depending
+-        // if the game is rendering fast or not), FixedUpdate is called at a given interval define in the Physic Setting
+-        // of the project. This is where all physic code should be placed.
+         private void FixedUpdate()
+         {
+-            // If the tank doesn't have a path currently, exit early.
+             if(m_CurrentPath == null || m_CurrentPath.corners.Length == 0)
+                 return;
+             
+             var rb = m_Movement.Rigidbody;
+             
+-            //The point we will orient toward. By default, the current corner in our path
+             Vector3 orientTarget = m_CurrentPath.corners[Mathf.Min(m_CurrentCorner, m_CurrentPath.corners.Length - 1)];
+ 
+-            //if we are not moving, we orient toward our target instead
+             if (!m_IsMoving)
+                 orientTarget = m_CurrentTarget.position;
+ 
+@@ -371,29 +281,23 @@ namespace Tanks.Complete
+             float orientDot = Vector3.Dot(forward, toOrientTarget);
+             float rotatingAngle = Vector3.SignedAngle(toOrientTarget, forward, Vector3.up);
+ 
+-            //if we are moving we move in our forward direction by our max speed
+             float moveAmount = Mathf.Clamp01(orientDot) * m_Movement.m_Speed * Time.deltaTime;
+             if (m_IsMoving && moveAmount > 0.000001f)
+             {
+                 rb.MovePosition(rb.position + forward * moveAmount);
+             }
+ 
+-            //the actual rotation for that frame is the smallest between the max turning speed for that time frame and the
+-            //angle itself. Multiplied by the sign of the angle to ensure we rotate in the right direction
+             rotatingAngle = Mathf.Sign(rotatingAngle) * Mathf.Min(Mathf.Abs(rotatingAngle), m_Movement.m_TurnSpeed * Time.deltaTime);
+             
+             if(Mathf.Abs(rotatingAngle) > 0.000001f)
+                 rb.MoveRotation(rb.rotation * Quaternion.AngleAxis(-rotatingAngle, Vector3.up));
+ 
+-            // If we reached our current target, we increase our corner. We will never reach the target when the target
+-            // is another tank as we stop before.
+             if (Vector3.Distance(rb.position, orientTarget) < 0.5f)
+             {
+                 m_CurrentCorner += 1;
+             }
+         }
+ 
+-        // Utility function which will add the length of all the sections of the given path to get its effective length
+         float GetPathLength(NavMeshPath path)
+         {
+             float dist = 0;
+diff --git a/Assets/_Tanks/Scripts/Tank/TankHealth.cs b/Assets/_Tanks/Scripts/Tank/TankHealth.cs
+index 380e19f..2a8c314 100644
+--- a/Assets/_Tanks/Scripts/Tank/TankHealth.cs
++++ b/Assets/_Tanks/Scripts/Tank/TankHealth.cs
+@@ -5,34 +5,30 @@ namespace Tanks.Complete
+ {
+     public class TankHealth : MonoBehaviour
+     {
+-        public float m_StartingHealth = 100f;               // The amount of health each tank starts with.
+-        public Slider m_Slider;                             // The slider to represent how much health the tank currently has.
+-        public Image m_FillImage;                           // The image component of the slider.
+-        public Color m_FullHealthColor = Color.green;    // The color the health bar will be when on full health.
+-        public Color m_ZeroHealthColor = Color.red;      // The color the health bar will be when on no health.
+-        public GameObject m_ExplosionPrefab;                // A prefab that will be instantiated in Awake, then used whenever the tank dies.
+-        [HideInInspector] public bool m_HasShield;          // Has the tank picked up a shield power up?
++        public float m_StartingHealth = 100f;
++        public Slider m_Slider;
++        public Image m_FillImage;
++        public Color m_FullHealthColor = Color.green;
++        public Color m_ZeroHealthColor = Color.red;
++        public GameObject m_ExplosionPrefab;
++        [HideInInspector] public bool m_HasShield;
+         
+         
+-        private AudioSource m_ExplosionAudio;               // The audio source to play when the tank explodes.
+-        private ParticleSystem m_ExplosionParticles;        // The particle system the will play when the tank is destroyed.
+-        private float m_CurrentHealth;                      // How much health the tank currently has.
+-        private bool m_Dead;                                // Has the tank been reduced beyond zero health yet?
+-        private float m_ShieldValue;                        // Percentage of reduced damage when the tank has a shield.
+-        private bool m_IsInvincible;                        // Is the tank invincible in this moment?
++        private AudioSource m_ExplosionAudio;
++        private ParticleSystem m_ExplosionParticles;
++        private float m_CurrentHealth;
++        private bool m_Dead;
++        private float m_ShieldValue;
++        private bool m_IsInvincible;
+ 
+         private void Awake ()
+         {
+-            // Instantiate the explosion prefab and get a reference to the particle system on it.
+             m_ExplosionParticles = Instantiate (m_ExplosionPrefab).GetComponent<ParticleSystem> ();
+ 
+-            // Get a reference to the audio source on the instantiated prefab.
+             m_ExplosionAudio = m_ExplosionParticles.GetComponent<AudioSource> ();
+ 
+-            // Disable the prefab so it can be activated when it's required.
+             m_ExplosionParticles.gameObject.SetActive (false);
+             
+-            // Set the slider max value to the max health the tank can have
+             m_Slider.maxValue = m_StartingHealth;
+         }
+ 
+@@ -44,30 +40,24 @@ namespace Tanks.Complete
+ 
+         private void OnEnable()
+         {
+-            // When the tank is enabled, reset the tank's health and whether or not it's dead.
+             m_CurrentHealth = m_StartingHealth;
+             m_Dead = false;
+             m_HasShield = false;
+             m_ShieldValue = 0;
+             m_IsInvincible = false;
+ 
+-            // Update the health slider's value and color.
+             SetHealthUI();
+         }
+ 
+ 
+         public void TakeDamage (float amount)
+         {
+-            // Check if the tank is not invincible
+             if (!m_IsInvincible)
+             {
+-                // Reduce current health by the amount of damage done.
+                 m_CurrentHealth -= amount * (1 - m_ShieldValue);
+ 
+-                // Change the UI elements appropriately.
+                 SetHealthUI ();
+ 
+-                // If the current health is at or below zero and it has not yet been registered, call OnDeath.
+                 if (m_CurrentHealth <= 0f && !m_Dead)
+                 {
+                     OnDeath ();
+@@ -78,29 +68,23 @@ namespace Tanks.Complete
+ 
+         public void IncreaseHealth(float amount)
+         {
+-            // Check if adding the amount would keep the health within the maximum limit
+             if (m_CurrentHealth + amount <= m_StartingHealth)
+             {
+-                // If the new health value is within the limit, add the amount
+                 m_CurrentHealth += amount;
+             }
+             else
+             {
+-                // If the new health exceeds the starting health, set it at the maximum
+                 m_CurrentHealth = m_StartingHealth;
+             }
+ 
+-            // Change the UI elements appropriately.
+             SetHealthUI();
+         }
+ 
+ 
+         public void ToggleShield (float shieldAmount)
+         {
+-            // Inverts the value of has shield.
+             m_HasShield = !m_HasShield;
+ 
+-            // Stablish the amount of damage that will be reduced by the shield
+             if (m_HasShield)
+             {
+                 m_ShieldValue = shieldAmount;
+@@ -119,30 +103,23 @@ namespace Tanks.Complete
+ 
+         private void SetHealthUI ()
+         {
+-            // Set the slider's value appropriately.
+             m_Slider.value = m_CurrentHealth;
+ 
+-            // Interpolate the color of the bar between the choosen colours based on the current percentage of the starting health.
+             m_FillImage.color = Color.Lerp (m_ZeroHealthColor, m_FullHealthColor, m_CurrentHealth / m_StartingHealth);
+         }
+ 
+ 
+         private void OnDeath ()
+         {
+-            // Set the flag so that this function is only called once.
+             m_Dead = true;
+ 
+-            // Move the instantiated explosion prefab to the tank's position and turn it on.
+             m_ExplosionParticles.transform.position = transform.position;
+             m_ExplosionParticles.gameObject.SetActive (true);
+ 
+-            // Play the particle system of the tank exploding.
+             m_ExplosionParticles.Play ();
+ 
+-            // Play the tank explosion sound effect.
+             m_ExplosionAudio.Play();
+ 
+-            // Turn the tank off.
+             gameObject.SetActive (false);
+         }
+     }
+diff --git a/Assets/_Tanks/Scripts/Tank/TankInputUser.cs b/Assets/_Tanks/Scripts/Tank/TankInputUser.cs
+index 042e816..960950b 100644
+--- a/Assets/_Tanks/Scripts/Tank/TankInputUser.cs
++++ b/Assets/_Tanks/Scripts/Tank/TankInputUser.cs
+@@ -4,43 +4,26 @@ using UnityEngine.InputSystem.Users;
+ 
+ namespace Tanks.Complete
+ {
+-    /// <summary>
+-    /// Contains the Input System Input User that is linked to a Tank. This take care of copying the default input actions
+-    /// from the Project Settings and link them to the given Input User. This is necessary as otherwise the project wide
+-    /// input actions would keep getting overriden by whoever bind to them last.
+-    /// </summary>
+     public class TankInputUser : MonoBehaviour
+     {
+-        public InputUser InputUser => m_InputUser;                      // The InputUser for this tank 
+-        public InputActionAsset ActionAsset => m_LocalActionAsset;      // The local Input Action Asset copy only binded to the right device
++        public InputUser InputUser => m_InputUser;
++        public InputActionAsset ActionAsset => m_LocalActionAsset;
+         
+         private InputUser m_InputUser;                                  
+         private InputActionAsset m_LocalActionAsset;
+         
+         private void Awake()
+         {
+-            // Clone the Action Map so the actions can be paired with a specific device (otherwise the default actions
+-            // would be claimed by one device then ben unavailable for any other player)
+             m_LocalActionAsset = InputActionAsset.FromJson(InputSystem.actions.ToJson());
+             
+-            // By default, pair to the keyboard, as this is the default input method. This allow this to work even without
+-            // a menu to assign any other input mode.
+             SetNewInputUser(InputUser.PerformPairingWithDevice(Keyboard.current));
+         }
+ 
+-        /// <summary>
+-        /// Activate the given control scheme on the Input User
+-        /// </summary>
+-        /// <param name="name">The name of the ControlScheme to activate</param>
+         public void ActivateScheme(string name)
+         {
+             m_InputUser.ActivateControlScheme(name);
+         }
+ 
+-        /// <summary>
+-        /// Replace the input user contained in this component by the given one
+-        /// </summary>
+-        /// <param name="user">The new InputUser</param>
+         public void SetNewInputUser(InputUser user)
+         {
+             if (!user.valid)
+@@ -49,9 +32,6 @@ namespace Tanks.Complete
+             m_InputUser = user;
+             m_InputUser.AssociateActionsWithUser(m_LocalActionAsset);
+             
+-            // If this user have an associated controlScheme (e.g. in this project KeyboardRight or KeyboardLeft) we
+-            // re-activate this scheme on the input user. This is necessary as we changed the associated actions in the above
+-            // line, so those new action haven't had their control scheme set, and this will set it.
+             if(m_InputUser.controlScheme.HasValue)
+                 m_InputUser.ActivateControlScheme(m_InputUser.controlScheme.Value);
+         }
+diff --git a/Assets/_Tanks/Scripts/Tank/TankMovement.cs b/Assets/_Tanks/Scripts/Tank/TankMovement.cs
+index 93eef22..c51815c 100644
+--- a/Assets/_Tanks/Scripts/Tank/TankMovement.cs
++++ b/Assets/_Tanks/Scripts/Tank/TankMovement.cs
+@@ -236,7 +236,7 @@ namespace Tanks.Complete
+             Vector3 movement = transform.forward * speedInput * m_Speed;
+ 
+             m_Rigidbody.linearVelocity = movement + m_ExplosionForceValue;
+-            m_ExplosionForceValue = Vector3.Lerp(m_ExplosionForceValue, Vector3.zero, Time.deltaTime * 3f); // 3f = braking speed
++            m_ExplosionForceValue = Vector3.Lerp(m_ExplosionForceValue, Vector3.zero, Time.deltaTime * 3f);
+         }
+ 
+ 
+diff --git a/Assets/_Tanks/Scripts/Tank/TankShooting.cs b/Assets/_Tanks/Scripts/Tank/TankShooting.cs
+index 2d8a7e7..339a579 100644
+--- a/Assets/_Tanks/Scripts/Tank/TankShooting.cs
++++ b/Assets/_Tanks/Scripts/Tank/TankShooting.cs
+@@ -6,51 +6,50 @@ namespace Tanks.Complete
+ {
+     public class TankShooting : MonoBehaviour
+     {
+-        public Rigidbody m_Shell;                   // Prefab of the shell.
+-        public Transform m_FireTransform;           // A child of the tank where the shells are spawned.
+-        public Slider m_AimSlider;                  // A child of the tank that displays the current launch force.
+-        public AudioSource m_ShootingAudio;         // Reference to the audio source used to play the shooting audio. NB: different to the movement audio source.
+-        public AudioClip m_ChargingClip;            // Audio that plays when each shot is charging up.
+-        public AudioClip m_FireClip;                // Audio that plays when each shot is fired.
++        public Rigidbody m_Shell;
++        public Transform m_FireTransform;
++        public Slider m_AimSlider;
++        public AudioSource m_ShootingAudio;
++        public AudioClip m_ChargingClip;
++        public AudioClip m_FireClip;
+         [Tooltip("The speed in unit/second the shell have when fired at minimum charge")]
+-        public float m_MinLaunchForce = 5f;        // The force given to the shell if the fire button is not held.
++        public float m_MinLaunchForce = 5f;
+         [Tooltip("The speed in unit/second the shell have when fired at max charge")]
+-        public float m_MaxLaunchForce = 20f;        // The force given to the shell if the fire button is held for the max charge time.
++        public float m_MaxLaunchForce = 20f;
+         [Tooltip("The maximum time spent charging. When charging reach that time, the shell is fired at MaxLaunchForce")]
+-        public float m_MaxChargeTime = 0.75f;       // How long the shell can charge for before it is fired at max force.
++        public float m_MaxChargeTime = 0.75f;
+         [Tooltip("The time that must pass before being able to shoot again after a shot")]
+-        public float m_ShotCooldown = 1.0f;         // The time required between 2 shots
++        public float m_ShotCooldown = 1.0f;
+         [Header("Shell Properties")]
+         [Tooltip("The amount of health removed to a tank if they are exactly on the landing spot of a shell")]
+-        public float m_MaxDamage = 100f;                    // The amount of damage done if the explosion is centred on a tank.
++        public float m_MaxDamage = 100f;
+         [Tooltip("The force of the explosion at the shell position. Keep it 50 and below")]
+-        public float m_ExplosionForce = 50f;              // The amount of force added to a tank at the centre of the explosion.
++        public float m_ExplosionForce = 50f;
+         [Tooltip("The radius of the explosion in Unity unit. Force decrease with distance to the center, and an tank further than this from the shell explosion won't be impacted by the explosion")]
+-        public float m_ExplosionRadius = 5f;                // The maximum distance away from the explosion tanks can be and are still affected.
++        public float m_ExplosionRadius = 5f;
+ 
+         [HideInInspector]
+-        public TankInputUser m_InputUser;           // The Input User component for that tanks. Contains the Input Actions. 
++        public TankInputUser m_InputUser;
+         
+         public float CurrentChargeRatio =>
+-            (m_CurrentLaunchForce - m_MinLaunchForce) / (m_MaxLaunchForce - m_MinLaunchForce); //The charging amount between 0-1
++            (m_CurrentLaunchForce - m_MinLaunchForce) / (m_MaxLaunchForce - m_MinLaunchForce);
+         public bool IsCharging => m_IsCharging;
+         
+         public bool m_IsComputerControlled { get; set; } = false;
+ 
+-        private string m_FireButton;                // The input axis that is used for launching shells.
+-        private float m_CurrentLaunchForce;         // The force that will be given to the shell when the fire button is released.
+-        private float m_ChargeSpeed;                // How fast the launch force increases, based on the max charge time.
+-        private bool m_Fired;                       // Whether or not the shell has been launched with this button press.
+-        private bool m_HasSpecialShell;             // has the tank a shell that makes extra damage?
+-        private float m_SpecialShellMultiplier;     // The amount that the special shell will multiply the damage.
+-        private InputAction fireAction;             // The Input Action for shooting, retrieve from TankInputUser
+-        private bool m_IsCharging = false;          // Are we currently charging the shot
+-        private float m_BaseMinLaunchForce;         // The initial value of m_MinLaunchForce
+-        private float m_ShotCooldownTimer;          // The timer counting down before a shot is allowed again
++        private string m_FireButton;
++        private float m_CurrentLaunchForce;
++        private float m_ChargeSpeed;
++        private bool m_Fired;
++        private bool m_HasSpecialShell;
++        private float m_SpecialShellMultiplier;
++        private InputAction fireAction;
++        private bool m_IsCharging = false;
++        private float m_BaseMinLaunchForce;
++        private float m_ShotCooldownTimer;
+         
+         private void OnEnable()
+         {
+-            // When the tank is turned on, reset the launch force, the UI and the power ups
+             m_CurrentLaunchForce = m_MinLaunchForce;
+             m_BaseMinLaunchForce = m_MinLaunchForce;
+             m_AimSlider.value = m_BaseMinLaunchForce;
+@@ -70,20 +69,17 @@ namespace Tanks.Complete
+ 
+         private void Start ()
+         {
+-            // The fire axis is based on the player number.
+             m_FireButton = "Fire";
+             fireAction = m_InputUser.ActionAsset.FindAction(m_FireButton);
+             
+             fireAction.Enable();
+ 
+-            // The rate that the launch force charges up is the range of possible forces by the max charge time.
+             m_ChargeSpeed = (m_MaxLaunchForce - m_MinLaunchForce) / m_MaxChargeTime;
+         }
+ 
+ 
+         private void Update ()
+         {
+-            // Computer and Human control Tank use 2 different update functions 
+             if (!m_IsComputerControlled)
+             {
+                 HumanUpdate();
+@@ -94,17 +90,12 @@ namespace Tanks.Complete
+             }
+         }
+ 
+-        /// <summary>
+-        /// Used by AI to start charging
+-        /// </summary>
+         public void StartCharging()
+         {
+             m_IsCharging = true;
+-            // ... reset the fired flag and reset the launch force.
+             m_Fired = false;
+             m_CurrentLaunchForce = m_MinLaunchForce;
+ 
+-            // Change the clip to the charging clip and start it playing.
+             m_ShootingAudio.clip = m_ChargingClip;
+             m_ShootingAudio.Play ();
+         }
+@@ -120,28 +111,21 @@ namespace Tanks.Complete
+ 
+         void ComputerUpdate()
+         {
+-            // The slider should have a default value of the minimum launch force.
+             m_AimSlider.value = m_BaseMinLaunchForce;
+ 
+-            // If the max force has been exceeded and the shell hasn't yet been launched...
+             if (m_CurrentLaunchForce >= m_MaxLaunchForce && !m_Fired)
+             {
+-                // ... use the max force and launch the shell.
+                 m_CurrentLaunchForce = m_MaxLaunchForce;
+                 Fire ();
+             }
+-            // Otherwise, if the fire button is being held and the shell hasn't been launched yet...
+             else if (m_IsCharging && !m_Fired)
+             {
+-                // Increment the launch force and update the slider.
+                 m_CurrentLaunchForce += m_ChargeSpeed * Time.deltaTime;
+ 
+                 m_AimSlider.value = m_CurrentLaunchForce;
+             }
+-            // Otherwise, if the fire button is released and the shell hasn't been launched yet...
+             else if (fireAction.WasReleasedThisFrame() && !m_Fired)
+             {
+-                // ... launch the shell.
+                 Fire ();
+                 m_IsCharging = false;
+             }
+@@ -149,45 +133,34 @@ namespace Tanks.Complete
+         
+         void HumanUpdate()
+         {
+-            // if there is a cooldown timer, decrement it
+             if (m_ShotCooldownTimer > 0.0f)
+             {
+                 m_ShotCooldownTimer -= Time.deltaTime;
+             }
+             
+-            // The slider should have a default value of the minimum launch force.
+             m_AimSlider.value = m_BaseMinLaunchForce;
+ 
+-            // If the max force has been exceeded and the shell hasn't yet been launched...
+             if (m_CurrentLaunchForce >= m_MaxLaunchForce && !m_Fired)
+             {
+-                // ... use the max force and launch the shell.
+                 m_CurrentLaunchForce = m_MaxLaunchForce;
+                 Fire ();
+             }
+-            // Otherwise, if the fire button has just started being pressed...
+             else if (m_ShotCooldownTimer <= 0 && fireAction.WasPressedThisFrame())
+             {
+-                // ... reset the fired flag and reset the launch force.
+                 m_Fired = false;
+                 m_CurrentLaunchForce = m_MinLaunchForce;
+ 
+-                // Change the clip to the charging clip and start it playing.
+                 m_ShootingAudio.clip = m_ChargingClip;
+                 m_ShootingAudio.Play ();
+             }
+-            // Otherwise, if the fire button is being held and the shell hasn't been launched yet...
+             else if (fireAction.IsPressed() && !m_Fired)
+             {
+-                // Increment the launch force and update the slider.
+                 m_CurrentLaunchForce += m_ChargeSpeed * Time.deltaTime;
+ 
+                 m_AimSlider.value = m_CurrentLaunchForce;
+             }
+-            // Otherwise, if the fire button is released and the shell hasn't been launched yet...
+             else if (fireAction.WasReleasedThisFrame() && !m_Fired)
+             {
+-                // ... launch the shell.
+                 Fire ();
+             }
+         }
+@@ -195,14 +168,11 @@ namespace Tanks.Complete
+ 
+         private void Fire ()
+         {
+-            // Set the fired flag so only Fire is only called once.
+             m_Fired = true;
+ 
+-            // Create an instance of the shell and store a reference to it's rigidbody.
+             Rigidbody shellInstance =
+                 Instantiate (m_Shell, m_FireTransform.position, m_FireTransform.rotation) as Rigidbody;
+ 
+-            // Set the shell's velocity to the launch force in the fire position's forward direction.
+             shellInstance.linearVelocity = m_CurrentLaunchForce * m_FireTransform.forward;
+ 
+             ShellExplosion explosionData = shellInstance.GetComponent<ShellExplosion>();
+@@ -210,11 +180,9 @@ namespace Tanks.Complete
+             explosionData.m_ExplosionRadius = m_ExplosionRadius;
+             explosionData.m_MaxDamage = m_MaxDamage;
+             
+-            // Increase the damage if extra damage PowerUp is active
+             if (m_HasSpecialShell)
+             {
+                 explosionData.m_MaxDamage *= m_SpecialShellMultiplier;
+-                // Reset the default values after increasing the damage of the fired shell
+                 m_HasSpecialShell = false;
+                 m_SpecialShellMultiplier = 1f;
+                 
+@@ -227,11 +195,9 @@ namespace Tanks.Complete
+                     powerUpHUD.DisableActiveHUD();
+             }
+ 
+-            // Change the clip to the firing clip and play it.
+             m_ShootingAudio.clip = m_FireClip;
+             m_ShootingAudio.Play ();
+ 
+-            // Reset the launch force.  This is a precaution in case of missing button events.
+             m_CurrentLaunchForce = m_MinLaunchForce;
+ 
+             m_ShotCooldownTimer = m_ShotCooldown;
+@@ -244,11 +210,6 @@ namespace Tanks.Complete
+             m_SpecialShellMultiplier = damageMultiplier;
+         }
+ 
+-        /// <summary>
+-        /// Return the estyimated position the projectile will have with the charging level (between 0 & 1)
+-        /// </summary>
+-        /// <param name="chargingLevel">The fire charging level between 0 - 1</param>
+-        /// <returns>The position at which the projectile will be (ignore obstacle)</returns>
+         public Vector3 GetProjectilePosition(float chargingLevel)
+         {
+             float chargeLevel = Mathf.Lerp (m_MinLaunchForce, m_MaxLaunchForce, chargingLevel);
+@@ -259,7 +220,6 @@ namespace Tanks.Complete
+             float c = m_FireTransform.position.y;
+             
+             float sqrtContent = b * b - 4 * a * c;
+-            //no solution
+             if (sqrtContent <= 0)
+             {
+                 return m_FireTransform.position;
+diff --git a/Assets/_Tanks/Scripts/UI/GameUIHandler.cs b/Assets/_Tanks/Scripts/UI/GameUIHandler.cs
+index c2ab0de..e5cf77d 100644
+--- a/Assets/_Tanks/Scripts/UI/GameUIHandler.cs
++++ b/Assets/_Tanks/Scripts/UI/GameUIHandler.cs
+@@ -9,32 +9,29 @@ using UnityEngine.UI;
+ 
+ namespace Tanks.Complete
+ {
+-    // This handle both the start menu (selecting which tank each player use) and the pause menu if present
+     public class GameUIHandler : MonoBehaviour
+     {
+-        public GameManager m_GameManager;               // Reference to the GameManager in the scene
++        public GameManager m_GameManager;
+ 
+         [Header("Start Menu")] 
+-        public RectTransform m_StartMenuRoot;           // The GameObject root that is parent of the Start Menu
+-        public Button m_StartButton;                    // The Button that will start the game
++        public RectTransform m_StartMenuRoot;
++        public Button m_StartButton;
+ 
+         [Tooltip("The slot in the UI that can be taken by a player or computer tank")]
+-        public StartMenuSlot[] m_PlayerSlots;           // The Slots in the Start Menu that display the available tanks and handle players selections
++        public StartMenuSlot[] m_PlayerSlots;
+ 
+-        public OnScreenButton m_PauseMenuButton;        // Reference to OnScreenButton that emulate pressing a Gamepad Start button
++        public OnScreenButton m_PauseMenuButton;
+         
+-        private TextMeshProUGUI m_StartButtonText;      // Reference to the Text on the Start Button 
+-        private int m_SlotUsed = 0;                     // How many slots are currently used, the game need at least 2 to start
++        private TextMeshProUGUI m_StartButtonText;
++        private int m_SlotUsed = 0;
+ 
+-        private PauseMenu m_PauseMenu;                  // Reference to the pause menu (if present in the scene)
+-        private InputAction m_PauseAction;              // The InputAction that will trigger the pause menu
++        private PauseMenu m_PauseMenu;
++        private InputAction m_PauseAction;
+         
+         private CanvasScaler m_CanvasScaler;
+ 
+         private void Awake()
+         {
+-            // URP require stacking camera to be explicitly added to the stack on the main camera
+-            // so this check if the main camera already have our parent camera in their stack and otherwise add it.
+             Camera cam = GetComponentInParent<Camera>();
+ 
+             m_CanvasScaler = GetComponentInParent<CanvasScaler>();
+@@ -48,36 +45,25 @@ namespace Tanks.Complete
+ 
+         private void Start()
+         {
+-            // Hide the Mobile UI Control if present in the scene. This will have no effect on desktop, but on mobile we
+-            // do not want the mobile UI control on top of the start menu
+             if (MobileUIControl.Instance != null)
+                 MobileUIControl.Instance.Hide();
+ 
+-            // Setup the Start button to StartGame when clicked
+             m_StartButton.onClick.AddListener(StartGame);
+-            // but disable it until we have at least 2 tank selected
+             m_StartButton.interactable = false;
+             m_StartButtonText = m_StartButton.GetComponentInChildren<TextMeshProUGUI>();
+             m_StartButtonText.text = "2 Tanks required";
+             
+-            // Disable the on screen pause button
+             m_PauseMenuButton.gameObject.SetActive(false);
+ 
+-            // Pause Menu
+             m_PauseMenu = FindAnyObjectByType<PauseMenu>(FindObjectsInactive.Include);
+             if (m_PauseMenu != null)
+             {
+                 m_PauseMenu.Init();
+-                //clone the action so it doesn't change the default one
+                 m_PauseAction = InputSystem.actions.FindAction("Pause").Clone();
+                 var rectTransform = m_PauseMenuButton.GetComponent<RectTransform>();
+-                //force the button to be on top of everything so it can be clicked no matter what other screen is shown 
+                 rectTransform.SetAsLastSibling();
+             }
+ 
+-            // We use an array because the code was originally written to have any number of prefabs and player, but
+-            // this was fixed to always 4 tanks during development, so to avoid rewriting the code for static number,
+-            // we simply transform our 4 static tank prefab into an array
+             var tanksPrefabs =
+                 new[]
+                 {
+@@ -85,12 +71,10 @@ namespace Tanks.Complete
+                     m_GameManager.m_Tank4Prefab
+                 };
+ 
+-            // Go over all the player slots (4) and initialize them...
+             for (int i = 0; i < m_PlayerSlots.Length; ++i)
+             {
+                 var slot = m_PlayerSlots[i];
+ 
+-                // set the preview on the slot 
+                 slot.SetTankPreview(tanksPrefabs.Length > i ? tanksPrefabs[i] : tanksPrefabs[0]);
+ 
+                 var i1 = i;
+@@ -99,7 +83,6 @@ namespace Tanks.Complete
+                     slot.AddTank();
+                     m_SlotUsed += 1;
+ 
+-                    //we check if they are player 1 already used
+                     bool player1Present = false;
+                     for (int j = 0; j < m_PlayerSlots.Length; ++j)
+                     {
+@@ -109,19 +92,15 @@ namespace Tanks.Complete
+                             player1Present = true;
+                     }
+ 
+-                    // If there is no Player 1 tank, this new tank is assigned player 1
+                     if (!player1Present)
+                     {
+                         slot.SetPlayerControlling(1);
+                     }
+                     else
+                     {
+-                        // Otherwise, this tank is a computer controlled tank by default
+                         slot.SetPlayerControlling(-1);
+                     }
+ 
+-                    // If 2 slots or more are now used, we can start the game, so re-enable the Start button and update
+-                    // the text on the Start button
+                     if (m_SlotUsed >= 2)
+                     {
+                         m_StartButtonText.text = "Start";
+@@ -129,14 +108,11 @@ namespace Tanks.Complete
+                     }
+                 });
+ 
+-                // Setup the Off button on the tank controller section
+                 slot.m_OffControlButton.onClick.AddListener(() =>
+                 {
+                     slot.RemoveTank();
+                     m_SlotUsed -= 1;
+                     
+-                    // If after removing that tank from the used tanks we have less than 2 slots open, disable the 
+-                    // Start button and reset the text to the required warning
+                     if (m_SlotUsed < 2)
+                     {
+                         m_StartButtonText.text = "2 Tanks required";
+@@ -144,12 +120,10 @@ namespace Tanks.Complete
+                     }
+                 });
+ 
+-                // Setup the Player 1 control button
+                 slot.m_P1ControlButton.onClick.AddListener(() =>
+                 {
+                     slot.SetPlayerControlling(1);
+ 
+-                    //check if any other slot are player 1 controlled and switch it to computer
+                     for (int j = 0; j < m_PlayerSlots.Length; ++j)
+                     {
+                         var localSlot = m_PlayerSlots[j];
+@@ -162,12 +136,10 @@ namespace Tanks.Complete
+                     }
+                 });
+ 
+-                // Setup the Player 2 control button
+                 slot.m_P2ControlButton.onClick.AddListener(() =>
+                 {
+                     slot.SetPlayerControlling(2);
+ 
+-                    //check if any other slot are player 2 controlled and switch it to computer
+                     for (int j = 0; j < m_PlayerSlots.Length; ++j)
+                     {
+                         var localSlot = m_PlayerSlots[j];
+@@ -180,17 +152,14 @@ namespace Tanks.Complete
+                     }
+                 });
+ 
+-                // Setup the Computer control button
+                 slot.m_ComputerControlButton.onClick.AddListener(() => { slot.SetPlayerControlling(-1); });
+             }
+         }
+ 
+         void StartGame()
+         {
+-            // When starting the game, we disable the Start Menu
+             m_StartMenuRoot.gameObject.SetActive(false);
+ 
+-            // PlayerData is a structure that allow to pass info between the menu and the GameManager
+             List<GameManager.PlayerData> playerData = new List<GameManager.PlayerData>();
+             foreach (var slot in m_PlayerSlots)
+             {
+@@ -208,18 +177,14 @@ namespace Tanks.Complete
+ 
+             m_GameManager.StartGame(playerData.ToArray());
+ 
+-            //Destroy all the preview tanks
+             foreach (var slot in m_PlayerSlots)
+             {
+                 Destroy(slot.TankPreview);
+             }
+ 
+-            // If there was a Mobile UI Control, we now show it again (on desktop this will do nothing)
+             if (MobileUIControl.Instance != null)
+                 MobileUIControl.Instance.Show();
+ 
+-            // If there is a pause menu, we re-enable the on screen pause button and listen to the pause action to
+-            // display the pause menu when pressed
+             if (m_PauseMenu != null)
+             {
+                 m_PauseAction.performed += evt => { TogglePause(); };
+@@ -236,8 +201,6 @@ namespace Tanks.Complete
+ 
+         private void Update()
+         {
+-            // This help keeping the UI readable in both portrait and landscape mode (game should only be played in landscape
+-            // but Unity Play cannot enforce an orientation so we need it to be readable even in portrait)
+             float ratio = Screen.width / (float)Screen.height;
+             m_CanvasScaler.matchWidthOrHeight = ratio > 1.0f ? 1.0f : 0.0f;
+         }
+diff --git a/Assets/_Tanks/Scripts/UI/MessageTextReference.cs b/Assets/_Tanks/Scripts/UI/MessageTextReference.cs
+index 0cb15a3..f16922b 100644
+--- a/Assets/_Tanks/Scripts/UI/MessageTextReference.cs
++++ b/Assets/_Tanks/Scripts/UI/MessageTextReference.cs
+@@ -3,8 +3,6 @@ using UnityEngine;
+ 
+ namespace Tanks.Complete
+ {
+-    // This is used to quickly find the GameObject it is added to by using FindObjectOfType.
+-    // Used by the GameManager to find the text used to display game informations
+     public class MessageTextReference : MonoBehaviour
+     {
+         public TextMeshProUGUI Text => GetComponent<TextMeshProUGUI>();
+diff --git a/Assets/_Tanks/Scripts/UI/MobileControl/MobileUIControl.cs b/Assets/_Tanks/Scripts/UI/MobileControl/MobileUIControl.cs
+index 2ecf91d..3de5be5 100644
+--- a/Assets/_Tanks/Scripts/UI/MobileControl/MobileUIControl.cs
++++ b/Assets/_Tanks/Scripts/UI/MobileControl/MobileUIControl.cs
+@@ -4,9 +4,6 @@ using UnityEngine.InputSystem.OnScreen;
+ 
+ namespace Tanks.Complete
+ {
+-    // Handle on screen UI Control used for mobile platform. By default, will auto-disable itself when not on mobile
+-    // Default execution is low to ensure it disable itself before any other script so other scripts can use its enabled
+-    // status as a test to know if on a mobile platform or not.
+     [DefaultExecutionOrder(-90)]
+     public class MobileUIControl : MonoBehaviour
+     {
+@@ -19,7 +16,6 @@ namespace Tanks.Complete
+         
+         private OnScreenControl m_Control;
+ 
+-        // Start is called once before the first execution of Update after the MonoBehaviour is created
+         void Awake()
+         {
+             Instance = this;
+@@ -33,7 +29,6 @@ namespace Tanks.Complete
+ 
+         public void Show()
+         {
+-            // On non mobile platform with the auto disable, we cannot show it
+             if (AutoDisableOnNonMobilePlatform && !Application.isMobilePlatform)
+             {
+                 return;
+diff --git a/Assets/_Tanks/Scripts/UI/MobileControl/VirtualInputs/UIVirtualJoystick.cs b/Assets/_Tanks/Scripts/UI/MobileControl/VirtualInputs/UIVirtualJoystick.cs
+index 0ae2edc..e1de18b 100644
+--- a/Assets/_Tanks/Scripts/UI/MobileControl/VirtualInputs/UIVirtualJoystick.cs
++++ b/Assets/_Tanks/Scripts/UI/MobileControl/VirtualInputs/UIVirtualJoystick.cs
+@@ -5,7 +5,6 @@ using UnityEngine.InputSystem.OnScreen;
+ 
+ namespace Tanks.Complete
+ {
+-    // A On Screen joystick that emulate a gamepad joystick for the Input System
+     public class UIVirtualJoystick : OnScreenControl, IPointerDownHandler, IDragHandler, IPointerUpHandler
+     {
+         [Header("Rect References")]
+diff --git a/Assets/_Tanks/Scripts/UI/PauseMenu.cs b/Assets/_Tanks/Scripts/UI/PauseMenu.cs
+index 32da13f..416e329 100644
+--- a/Assets/_Tanks/Scripts/UI/PauseMenu.cs
++++ b/Assets/_Tanks/Scripts/UI/PauseMenu.cs
+@@ -4,22 +4,20 @@ using UnityEngine.UI;
+ 
+ namespace Tanks.Complete
+ {
+-    // Handle a simple pause menu displaying the control and allowing to restart the game or quit it.
+     public class PauseMenu : MonoBehaviour
+     {
+-        public RectTransform m_PauseMenuRoot;           // Reference to the root Transform of the Pause Menu
+-        public RectTransform m_PauseMenuButtonsRoot;    // Reference to the root containing the button of the menu
+-        public Button m_ControlScreenButton;            // Reference to the button opening the control screen
++        public RectTransform m_PauseMenuRoot;
++        public RectTransform m_PauseMenuButtonsRoot;
++        public Button m_ControlScreenButton;
+ 
+-        public RectTransform m_ControlMenuRoot;         // Reference to the root of the Control Screen
+-        public Button m_ControlMenuBackButton;          // Reference to the button that allow to go back to the Pause Menu from Control screen
++        public RectTransform m_ControlMenuRoot;
++        public Button m_ControlMenuBackButton;
+ 
+-        public Button m_SelectTankButton;               // Reference to the button that go back to tank selection
+-        public Button m_QuitButton;                     // Reference to the button that quit the Game
++        public Button m_SelectTankButton;
++        public Button m_QuitButton;
+ 
+         public void Init()
+         {
+-            // Setup clicking on the back button on the Control Screen disabling the Control Screen and re-enabling the pause menu buttons
+             m_ControlMenuBackButton.onClick.AddListener(() =>
+             {
+                 m_ControlMenuRoot.gameObject.SetActive(false);
+@@ -28,29 +26,24 @@ namespace Tanks.Complete
+ 
+             m_PauseMenuButtonsRoot.gameObject.SetActive(false);
+             
+-            // Setup clicking on the Control button enabling the Control Screen and disabling the pause menu buttons
+             m_ControlScreenButton.onClick.AddListener(() =>
+             {
+                 m_ControlMenuRoot.gameObject.SetActive(true);
+                 m_PauseMenuButtonsRoot.gameObject.SetActive(false);
+             });
+ 
+-            // Setup clicking on the Tank Selection button reloading the scene (effectively sending back to the main menu)
+             m_SelectTankButton.onClick.AddListener(() =>
+             {
+                 Time.timeScale = 1.0f;
+                 SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+             });
+ 
+-            // If the application is the editor or a web build, quitting the game is impossible...
+             if (Application.platform == RuntimePlatform.WebGLPlayer || Application.isEditor)
+             {
+-                // so disable the quit button
+                 m_QuitButton.gameObject.SetActive(false);
+             }
+             else
+             {
+-                // otherwise setup the quit button to Quit the application
+                 m_QuitButton.gameObject.SetActive(true);
+                 m_QuitButton.onClick.AddListener(Application.Quit);
+             }
+@@ -63,12 +56,9 @@ namespace Tanks.Complete
+         {
+             if (m_PauseMenuRoot != null)
+             {
+-                // When toggling, swap the value of active for the pause menu root.
+                 bool state = !m_PauseMenuRoot.gameObject.activeSelf;
+                 m_PauseMenuRoot.gameObject.SetActive(state);
+ 
+-                // set the time scale to 0.0f, which is a simple way of "pausing" the game as everything will return 0 as 
+-                // delta time and nothing will move anymore.
+                 Time.timeScale = state ? 0.0f : 1.0f;
+ 
+                 m_ControlMenuRoot.gameObject.SetActive(false);
+diff --git a/Assets/_Tanks/Scripts/UI/StartMenuSlot.cs b/Assets/_Tanks/Scripts/UI/StartMenuSlot.cs
+index cbcce1e..85b9a20 100644
+--- a/Assets/_Tanks/Scripts/UI/StartMenuSlot.cs
++++ b/Assets/_Tanks/Scripts/UI/StartMenuSlot.cs
+@@ -5,42 +5,38 @@ using Image = UnityEngine.UI.Image;
+ 
+ namespace Tanks.Complete
+ {
+-    // Class handling on "slot" in the main menu, which is an entry that show a tank preview, display its stat and allow
+-    // to add that tank to the game or not and change who control it (p1, p2 or computer)
+     public class StartMenuSlot : MonoBehaviour
+     {
+-        public Color m_SlotColor;                       // The color the tank in that slot will take
++        public Color m_SlotColor;
+         
+         [Header("References")]
+-        public RectTransform m_TankPreviewPosition;     // The Transform on which to place the Tank preview so it display at the right place on screen
+-        public TextMeshProUGUI m_TankStats;             // The Text to use to display the tank stats
+-        public Button m_AddControlButton;               // The button on which when clicked the tank get added to the current game
+-
+-        public RectTransform m_ControlChoiceRoot;       // The root of which all the control choice buttons are parented to
+-        public Button m_P1ControlButton;                // the button that make this tank controlled by p1
+-        public Button m_P2ControlButton;                // the button that make this tank controlled by p2
+-        public Button m_ComputerControlButton;          // the button that make this tank controlled by the computer
+-        public Button m_OffControlButton;               // the button that remove that tank from the currently used tanks
+-
+-        public Image BackgroundImage;                   // The Image that is the background of the whole slot
+-        public Sprite OpenSlotBackground;               // The sprite to use when the slot is open (still not used by anyone)
+-        public Sprite UsedSlotBackground;               // The sprite to use when the slot is used (controlled by p1/p2 or computer)
+-
+-        public GameObject TankPreview { get; set; }         // The preview instance that show this tank rotating in the menu
+-        public GameObject TankPrefab { get; private set; }  // The prefab this slot is based on
+-        public int PlayerControlling { get; set; }          // Which player control this, 1 or 2 (will be -1 for computer)
+-        public bool IsOpen { get; set; }                    // Is the slot open (not join the game yet) or not (already assigned to p1/p2 or computer)
+-        public bool IsComputer { get; set; }                // Is the slot used by a computer controlled tank or a player controlled one
++        public RectTransform m_TankPreviewPosition;
++        public TextMeshProUGUI m_TankStats;
++        public Button m_AddControlButton;
++
++        public RectTransform m_ControlChoiceRoot;
++        public Button m_P1ControlButton;
++        public Button m_P2ControlButton;
++        public Button m_ComputerControlButton;
++        public Button m_OffControlButton;
++
++        public Image BackgroundImage;
++        public Sprite OpenSlotBackground;
++        public Sprite UsedSlotBackground;
++
++        public GameObject TankPreview { get; set; }
++        public GameObject TankPrefab { get; private set; }
++        public int PlayerControlling { get; set; }
++        public bool IsOpen { get; set; }
++        public bool IsComputer { get; set; }
+         
+-        private Camera m_MenuCamera;                        // The Camera used to display the menu
++        private Camera m_MenuCamera;
+ 
+-        // Start is called once before the first execution of Update after the MonoBehaviour is created
+         void Awake()
+         {
+             m_MenuCamera = GetComponentInParent<Camera>();
+             IsOpen = true;
+ 
+-            //On mobile platform you can only use one player, so we disabled p2
+             if (Application.isMobilePlatform)
+             {
+                 m_P2ControlButton.gameObject.SetActive(false);
+@@ -51,7 +47,6 @@ namespace Tanks.Complete
+         
+         private void Update()
+         {
+-            // If we have a preview slowly rotate it
+             if (TankPreview != null)
+             {
+                 TankPreview.transform.Rotate(Vector3.up, 45.0f * Time.deltaTime);
+@@ -80,7 +75,6 @@ namespace Tanks.Complete
+ 
+         public void SetPlayerControlling(int playerNumber)
+         {
+-            //re-enable the button for the current controller as we now can re-select it again
+             if (PlayerControlling == 1)
+                 m_P1ControlButton.interactable = true;
+             else if (PlayerControlling == 2)
+@@ -88,10 +82,8 @@ namespace Tanks.Complete
+             else if (PlayerControlling == -1)
+                 m_ComputerControlButton.interactable = true;
+             
+-            // change the controller 
+             PlayerControlling = playerNumber;
+             
+-            // then disable the associated button and set if its a computer or not 
+             switch(playerNumber)
+             {
+                 case 1:
+@@ -111,51 +103,40 @@ namespace Tanks.Complete
+ 
+         public void SetTankPreview(GameObject prefab)
+         {
+-            // If we already have a tank preview, destroy it
+             if (TankPreview != null)
+             {
+                 Destroy(TankPreview);
+             }
+ 
+-            //assign the right prefab
+             TankPrefab = prefab;
+-            //then instantiate it as the preview
+             TankPreview = Instantiate(prefab);
+             
+-            // get reference to all components
+             var move = TankPreview.GetComponent<TankMovement> ();
+             var shoot = TankPreview.GetComponent<TankShooting> ();
+             var health = TankPreview.GetComponent<TankHealth>();
+ 
+-            // disable them, as this is a visual only preview and doesn't need to react to any gameplay like user input etc.
+             move.enabled = false;
+             shoot.enabled = false;
+ 
+-            // update the tank stats text with this tank stats
+             m_TankStats.text = $"Speed {move.m_Speed}\nDamage {shoot.m_MaxDamage}\nHealth: {health.m_StartingHealth}";
+             
+-            //move it to the right preview position so it appears in the right spot on screen
+             var position = m_MenuCamera.WorldToScreenPoint(m_TankPreviewPosition.position);
+             TankPreview.transform.position =
+                 m_MenuCamera.ScreenToWorldPoint(position) + Vector3.back * 3.0f;
+             
+-            // go through all renderers of that tank
+             MeshRenderer[] renderers = TankPreview.GetComponentsInChildren<MeshRenderer>();
+             for (int i = 0; i < renderers.Length; i++)
+             {
+                 var renderer = renderers[i];
+                 for (int j = 0; j < renderer.materials.Length; ++j)
+                 {
+-                    // then when we find the TankColor material
+                     if (renderer.materials[j].name.Contains("TankColor"))
+                     {
+-                        // Set its color to the slot color
+                         renderer.materials[j].color = m_SlotColor;
+                     }
+                 }
+             }
+             
+-            //Disable all audio
+             var audioSource = TankPreview.GetComponentsInChildren<AudioSource>();
+             foreach (var source in audioSource)
+             {
