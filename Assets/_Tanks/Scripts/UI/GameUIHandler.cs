@@ -64,6 +64,20 @@ public class GameUIHandler : MonoBehaviour
 
     private void Update()
     {
+        // The menu is hidden while a match is active, so game-only shortcuts
+        // cannot accidentally fire while the player is configuring the menu.
+        if (!m_StartMenuRoot.gameObject.activeSelf)
+        {
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                ReturnToMainMenu();
+            }
+            else if (Input.GetKeyDown(KeyCode.R))
+            {
+                m_GameManager.RestartCurrentRound();
+            }
+        }
+
         float ratio = Screen.width / (float)Screen.height;
 
         if (ratio > 1.0f)
@@ -174,5 +188,24 @@ public class GameUIHandler : MonoBehaviour
         {
             Destroy(m_PlayerSlots[i].TankPreview);
         }
+    }
+
+    private void ReturnToMainMenu()
+    {
+        m_GameManager.ReturnToMainMenu();
+        m_StartMenuRoot.gameObject.SetActive(true);
+
+        // The previews are destroyed when a game starts; recreate them when
+        // the player returns so the existing slot selections remain visible.
+        for (int i = 0; i < m_PlayerSlots.Length; i++)
+        {
+            StartMenuSlot slot = m_PlayerSlots[i];
+            if (slot.TankPrefab != null)
+            {
+                slot.SetTankPreview(slot.TankPrefab);
+            }
+        }
+
+        UpdateStartButton();
     }
 }

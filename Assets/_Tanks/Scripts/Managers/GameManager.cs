@@ -31,6 +31,7 @@ public class GameManager : MonoBehaviour
     private PlayerData[] m_TankData;
     private int m_PlayerCount;
     private TextMeshProUGUI m_TitleText;
+    private bool m_RoundWinAwarded;
 
     private void Start()
     {
@@ -55,6 +56,10 @@ public class GameManager : MonoBehaviour
     {
         m_TankData = playerData;
         m_PlayerCount = playerData.Length;
+        m_RoundNumber = 0;
+        m_RoundWinner = null;
+        m_GameWinner = null;
+        m_RoundWinAwarded = false;
 
         m_StartWait = new WaitForSeconds(m_StartDelay);
         m_EndWait = new WaitForSeconds(m_EndDelay);
@@ -109,8 +114,82 @@ public class GameManager : MonoBehaviour
         SceneManager.LoadScene(0);
     }
 
+    /// <summary>
+    /// Restarts the current round without advancing the round number or keeping
+    /// a win that may already have been awarded during the round-ending delay.
+    /// </summary>
+    public void RestartCurrentRound()
+    {
+        if (m_PlayerCount <= 0 || m_TankData == null)
+        {
+            return;
+        }
+
+        if (m_RoundWinAwarded && m_RoundWinner != null)
+        {
+            m_RoundWinner.m_Wins = Mathf.Max(0, m_RoundWinner.m_Wins - 1);
+        }
+
+        StopAllCoroutines();
+
+        // RoundStarting increments this value, so decrement first to reuse the
+        // current round number instead of counting a restart as a new round.
+        m_RoundNumber = Mathf.Max(0, m_RoundNumber - 1);
+        m_RoundWinner = null;
+        m_GameWinner = null;
+        m_RoundWinAwarded = false;
+
+        if (m_TitleText != null)
+        {
+            m_TitleText.text = "";
+        }
+
+        StartCoroutine(GameLoop());
+    }
+
+    /// <summary>
+    /// Stops the current match and releases its tanks so the UI can show the
+    /// main menu again in the same scene.
+    /// </summary>
+    public void ReturnToMainMenu()
+    {
+        StopAllCoroutines();
+
+        for (int i = 0; i < m_PlayerCount; i++)
+        {
+            TankManager tank = m_SpawnPoints[i];
+            if (tank.m_Instance != null)
+            {
+                tank.m_Instance.SetActive(false);
+                Destroy(tank.m_Instance);
+            }
+
+            tank.m_Instance = null;
+            tank.m_Wins = 0;
+        }
+
+        m_PlayerCount = 0;
+        m_TankData = null;
+        m_RoundNumber = 0;
+        m_RoundWinner = null;
+        m_GameWinner = null;
+        m_RoundWinAwarded = false;
+
+        if (m_CameraControl != null)
+        {
+            m_CameraControl.m_Targets = new Transform[0];
+        }
+
+        if (m_TitleText != null)
+        {
+            m_TitleText.text = "";
+        }
+    }
+
     private IEnumerator RoundStarting()
     {
+        m_RoundWinner = null;
+        m_RoundWinAwarded = false;
         ResetAllTanks();
         DisableTankControl();
 
@@ -143,6 +222,7 @@ public class GameManager : MonoBehaviour
         if (m_RoundWinner != null)
         {
             m_RoundWinner.m_Wins++;
+            m_RoundWinAwarded = true;
         }
 
         m_GameWinner = GetGameWinner();
